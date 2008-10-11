@@ -1,6 +1,7 @@
-# solr integration
-collective.recipe.ant https://svn.plone.org/svn/collective/buildout/collective.recipe.ant/trunk
+#
+# applied by: svn propset svn:externals -F EXTERNALS.txt .
+#
+
 collective.recipe.solrinstance https://svn.plone.org/svn/collective/buildout/collective.recipe.solrinstance/trunk
 collective.indexing https://svn.plone.org/svn/collective/collective.indexing/trunk
 collective.solr https://svn.plone.org/svn/collective/collective.solr/trunk
-
