@@ -1,7 +1,5 @@
-#
-# applied by: svn propset svn:externals -F EXTERNALS.txt .
-#
-
+# solr integration
 collective.recipe.solrinstance https://svn.plone.org/svn/collective/buildout/collective.recipe.solrinstance/trunk
 collective.indexing https://svn.plone.org/svn/collective/collective.indexing/trunk
 collective.solr https://svn.plone.org/svn/collective/collective.solr/trunk
+
