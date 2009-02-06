@@ -9,9 +9,81 @@ from collective.solr.manager import SolrConnectionConfig
 from collective.solr.manager import SolrConnectionManager
 from collective.solr.tests.utils import getData, fakehttp
 from collective.solr.search import quote, Search
+from collective.solr.search import quote2
 
 
 class QuoteTests(TestCase):
+
+    def testQuoting2(self):
+        # http://lucene.apache.org/java/2_3_2/queryparsersyntax.html
+        self.assertEqual(quote2(''), '')
+        self.assertEqual(quote2(' '), '')
+        self.assertEqual(quote2('foo'), 'foo')
+        self.assertEqual(quote2('foo '), 'foo')
+        self.assertEqual(quote2('"foo'), '\\"foo')
+        self.assertEqual(quote2('foo"'), 'foo\\"')
+        self.assertEqual(quote2('foo bar'), '(foo bar)')
+        self.assertEqual(quote2('"foo bar"'), '"foo bar"')
+        self.assertEqual(quote2('foo bar what?'), '(foo bar what?)')
+        self.assertEqual(quote2('[]'), '')
+        self.assertEqual(quote2('()'), '')
+        self.assertEqual(quote2('{}'), '')
+        self.assertEqual(quote2('...""'), '...\\"\\"')
+        self.assertEqual(quote2('\\'), '\\\\') # Search for \ has to be quoted
+        self.assertEqual(quote2('\?'), '\?')
+        self.assertEqual(quote2('john@foo.com'), 'john@foo.com')
+
+        # Fields
+        self.assertEqual(quote2('"jakarta apache" jakarta'), '("jakarta apache" jakarta)')
+
+        # Wildcard searches
+        self.assertEqual(quote2('te?t'), 'te?t')
+        self.assertEqual(quote2('test*'), 'test*')
+        self.assertEqual(quote2('te*t'), 'te*t')
+        self.assertEqual(quote2('?test'), 'test')
+        self.assertEqual(quote2('*test'), 'test')
+
+        # Fuzzy searches
+        self.assertEqual(quote2('roam~'), 'roam~')
+        self.assertEqual(quote2('roam~0.8'), 'roam~0.8')
+
+        # Proximity searches
+        self.assertEqual(quote2('"jakarta apache"~10'), '"jakarta apache"~10')
+
+        # Range searches
+        self.assertEqual(quote2('[* TO NOW]'), '[* TO NOW]')
+        self.assertEqual(quote2('[1972-05-11T00:00:00.000Z TO *]'), '[1972-05-11T00:00:00.000Z TO *]')
+        self.assertEqual(quote2('[1972-05-11T00:00:00.000Z TO 2011-05-10T01:30:00.000Z]'),
+                                '[1972-05-11T00:00:00.000Z TO 2011-05-10T01:30:00.000Z]')
+        self.assertEqual(quote2('[20020101 TO 20030101]'), '[20020101 TO 20030101]')
+        self.assertEqual(quote2('{Aida TO Carmen}'), '{Aida TO Carmen}')
+        self.assertEqual(quote2('{Aida TO}'), '{Aida TO *}')
+        self.assertEqual(quote2('{TO Carmen}'), '{* TO Carmen}')
+
+        # Boosting a term
+        self.assertEqual(quote2('jakarta^4 apache'), '(jakarta^4 apache)')
+        self.assertEqual(quote2('jakarta^0.2 apache'), '(jakarta^0.2 apache)')
+        self.assertEqual(quote2('"jakarta apache"^4 "Apache Lucene"'), '("jakarta apache"^4 "Apache Lucene")')
+
+        # Operators and grouping
+        self.assertEqual(quote2('+return +"pink panther"'), '(+return +"pink panther")')
+        self.assertEqual(quote2('+jakarta lucene'), '(+jakarta lucene)')
+        self.assertEqual(quote2('"jakarta apache" -"Apache Lucene"'), '("jakarta apache" -"Apache Lucene")')
+        self.assertEqual(quote2('"jakarta apache" NOT "Apache Lucene"'), '("jakarta apache" NOT "Apache Lucene")')
+        self.assertEqual(quote2('"jakarta apache" OR jakarta'), '("jakarta apache" OR jakarta)')
+        self.assertEqual(quote2('"jakarta apache" AND "Apache Lucene"'), '("jakarta apache" AND "Apache Lucene")')
+        self.assertEqual(quote2('(jakarta OR apache) AND website'), '((jakarta OR apache) AND website)')
+        self.assertEqual(quote2('(a AND (b OR c))'), '(a AND (b OR c))')
+        self.assertEqual(quote2('((a AND b) OR c)'), '((a AND b) OR c)')
+
+        # Escaping special characters
+        self.assertEqual(quote2('-+&&||!^~:'), '\\-\\+\\&&\\||\\!\\^\\~\\:')
+        # Only quote * and ? if quoted
+        self.assertEqual(quote2('"*?"'), '"\\*\\?"')
+
+        # Unicode
+        self.assertEqual(quote2(u'john@foo.com'), 'john@foo.com')
+
 
     def testQuoting(self):
         self.assertEqual(quote('foo'), 'foo')

@@ -4,6 +4,9 @@ Changelog
 1.0b6 - Unreleased
 ------------------
 
+* Parse and quote the query to filter invalid query syntax.
+  [tesdal]
+
 * In solrSearchResults, if the passed in request is a dict, look up 
   request to enable adaptation into PloneFlare.
   [tesdal]
