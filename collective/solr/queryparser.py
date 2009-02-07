@@ -18,6 +18,7 @@ class Group(list):
     def __init__(self, start=None, end=None):
         self.start = start
         self.end = end
+        self.isgroup = False # Set on pop
     def __str__(self):
         res = [x for x in self if x]
         lenres = len(res)
@@ -42,15 +43,16 @@ class Range(Group):
         first=last='*'
         if len(self) == 0:
             return ''
-        if 'TO' in self:
+        if not 'TO' in self:
+            # Not valid range, quote
+            return '\\%s%s\\%s' % (self.start,''.join([str(x) for x in self]),self.end)
+        else:
             # split on 'TO'
             split = self.index('TO')
             if split > 0:
-                first = ''.join([str(x) for x in self[:split]])
+                first = ''.join([str(x) for x in self[:split] if not isinstance(x, Whitespace)])
             if split < (len(self)-1):
-                last = ''.join([str(x) for x in self[split+1:]])
-        else:
-            first=''.join([str(x) for x in self])
+                last = ''.join([str(x) for x in self[split+1:] if not isinstance(x, Whitespace)])
         return '%s%s TO %s%s' % (self.start, first, last, self.end)
 
 class Stack(list):
@@ -77,11 +79,9 @@ def quote(term):
         whitespace, text, grouping, special = tokens[i]
 
         if whitespace:
-            # Add whitespace if quoted text
-            if isinstance(stack.current, Quote):
+            # Add whitespace if group text, range and group filter on display
+            if isinstance(stack.current, Group):
                 stack.current.append(Whitespace())
-            elif isinstance(stack.current, Range):
-                pass
             elif isinstance(stack.current, list):
                 # We have whitespace with no grouping, insert group
                 new = Group('(',')')
@@ -101,6 +101,7 @@ def quote(term):
                         stack.current.end = '\\"'
                     else:
                         stack.current.start = stack.current.end = '"'
+                        stack.current.isgroup = True
                     stack.pop()
                 else:
                     # Right now this is just a single quote,
@@ -118,6 +119,7 @@ def quote(term):
                 stack.add(new)
             elif grouping in ']})':
                 if stack.current.end == grouping:
+                    stack.current.isgroup = True
                     stack.pop()
                 else:
                     stack.current.append('\\%s'%grouping)
@@ -178,7 +180,7 @@ def quote(term):
                     stack.current.append('\\%s'%special)
             elif special in '?*':
                 # ? and * can not be the first characters of a search
-                if stack.current:
+                if (stack.current and not getattr(stack.current[-1],'isgroup',False)) or isinstance(stack.current, Range):
                     stack.current.append(special)
             elif isinstance(stack.current, Group):
                 stack.current.append(special)

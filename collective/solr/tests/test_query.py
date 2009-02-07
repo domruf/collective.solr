@@ -39,6 +39,12 @@ class QuoteTests(TestCase):
         self.assertEqual(quote('"[]"'), '"\[\]"')
         self.assertEqual(quote('"{}"'), '"\{\}"')
         self.assertEqual(quote('"()"'), '"\(\)"')
+        self.assertEqual(quote('foo and bar and 42"*'), '(foo and bar and 42\\"\\*)')
+        # Can't use ? or * as beginning of new query
+        self.assertEqual(quote('"fix and it"*'), '"fix and it"')
+        self.assertEqual(quote('"fix and it"?'), '"fix and it"')
+        self.assertEqual(quote('foo and bar and [foobar at foo.com]*'),
+                               '(foo and bar and \[foobar at foo.com\])')
 
     def testQuotingFields(self):
         self.assertEqual(quote('"jakarta apache" jakarta'), '("jakarta apache" jakarta)')
@@ -94,7 +100,7 @@ class QuoteTests(TestCase):
         self.assertEqual(quote('whät?'), 'wh\xc3\xa4t?')
         self.assertEqual(quote('"whät?"'), '"wh\xc3\xa4t\?"')
         self.assertEqual(quote('"[ø]"'), '"\[\xc3\xb8\]"')
-        self.assertEqual(quote('[ø]'), '[\xc3\xb8 TO *]')
+        self.assertEqual(quote('[ø]'), '\\[\xc3\xb8\\]')
         self.assertEqual(quote('"foø*"'), '"fo\xc3\xb8\*"')
         self.assertEqual(quote('"foø bar?"'), '"fo\xc3\xb8 bar\?"')
         self.assertEqual(quote(u'john@foo.com'), 'john@foo.com')
