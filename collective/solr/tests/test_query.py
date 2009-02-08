@@ -105,6 +105,19 @@ class QuoteTests(TestCase):
         self.assertEqual(quote('"foø bar?"'), '"fo\xc3\xb8 bar\?"')
         self.assertEqual(quote(u'john@foo.com'), 'john@foo.com')
 
+    def testSolrSpecifics(self):
+        # http://wiki.apache.org/solr/SolrQuerySyntax
+        self.assertEqual(quote('"recip(rord(myfield),1,2,3)"'), '"recip\(rord\(myfield\),1,2,3\)"') # Seems to be ok to quote function
+        self.assertEqual(quote('[* TO NOW]'), '[* TO NOW]')
+        self.assertEqual(quote('[1976-03-06T23:59:59.999Z TO *]'), '[1976-03-06T23:59:59.999Z TO *]')
+        self.assertEqual(quote('[1995-12-31T23:59:59.999Z TO 2007-03-06T00:00:00Z]'), 
+                               '[1995-12-31T23:59:59.999Z TO 2007-03-06T00:00:00Z]')
+        self.assertEqual(quote('[NOW-1YEAR/DAY TO NOW/DAY+1DAY]'), '[NOW-1YEAR/DAY TO NOW/DAY+1DAY]')
+        self.assertEqual(quote('[1976-03-06T23:59:59.999Z TO 1976-03-06T23:59:59.999Z+1YEAR]'), 
+                               '[1976-03-06T23:59:59.999Z TO 1976-03-06T23:59:59.999Z+1YEAR]')
+        self.assertEqual(quote('[1976-03-06T23:59:59.999Z/YEAR TO 1976-03-06T23:59:59.999Z]'),
+                               '[1976-03-06T23:59:59.999Z/YEAR TO 1976-03-06T23:59:59.999Z]')
+
 
 class QueryTests(TestCase):
 
