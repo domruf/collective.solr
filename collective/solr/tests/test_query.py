@@ -24,6 +24,8 @@ class QuoteTests(TestCase):
         self.assertEqual(quote('"foo'), '\\"foo')
         self.assertEqual(quote('foo"'), 'foo\\"')
         self.assertEqual(quote('foo bar'), '(foo bar)')
+        self.assertEqual(quote('"foo bar" bah'), '("foo bar" bah)')
+        self.assertEqual(quote('"(foo bar)" bah'), '("\\(foo bar\\)" bah)')
         self.assertEqual(quote('"foo bar"'), '"foo bar"')
         self.assertEqual(quote('"foo bar'), '(\\"foo bar)')
         self.assertEqual(quote('foo bar what?'), '(foo bar what?)')
@@ -52,6 +54,7 @@ class QuoteTests(TestCase):
     def testQuotingWildcardSearches(self):
         self.assertEqual(quote('te?t'), 'te?t')
         self.assertEqual(quote('test*'), 'test*')
+        self.assertEqual(quote('test**'), 'test*')
         self.assertEqual(quote('te*t'), 'te*t')
         self.assertEqual(quote('?test'), 'test')
         self.assertEqual(quote('*test'), 'test')

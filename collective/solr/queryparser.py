@@ -180,7 +180,11 @@ def quote(term):
                     stack.current.append('\\%s'%special)
             elif special in '?*':
                 # ? and * can not be the first characters of a search
-                if (stack.current and not getattr(stack.current[-1],'isgroup',False)) or isinstance(stack.current, Range):
+                if (stack.current \
+                    and not getattr(stack.current[-1],'isgroup',False) \
+                    and (isinstance(stack.current[-1], str) and \
+                         not stack.current[-1] in special)) \
+                   or isinstance(stack.current, Range):
                     stack.current.append(special)
             elif isinstance(stack.current, Group):
                 stack.current.append(special)
