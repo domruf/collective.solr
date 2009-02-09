@@ -30,7 +30,7 @@ def setupTranslationMap():
             trans += char
         else:
             trans += ' '
-    return maketrans(ctrls, trans)
+    return maketrans(ctrls, trans).decode("iso-8859-1")
 
 translation_map = setupTranslationMap()
 
@@ -43,6 +43,8 @@ def prepareData(data):
         data['allowedRolesAndUsers'] = [r.replace(':','$') for r in allowed]
     searchable = data.get('SearchableText', None)
     if searchable is not None:
+        if isinstance(searchable, str):
+            searchable = searchable.decode("utf-8")
         data['SearchableText'] = searchable.translate(translation_map)
 
 
