@@ -3,7 +3,7 @@ from re import compile
 # Solr/lucene reserved characters/terms: + - && || ! ( ) { } [ ] ^ " ~ * ? : \
 # Four groups for tokenizer:
 # 1) Whitespace (\s+)
-# 2) Any non reserved characters ([^(){}\[\]+\-!^\"~*?:\\\&\|\s]+)
+# 2) Any non reserved characters (normal text) ([^(){}\[\]+\-!^\"~*?:\\\&\|\s]+)
 # 3) Any grouping characters ([(){}\[\]\"])
 # 4) Any special operators ([+\-!^~*?:\\\]|\&\&|\|\|))
 query_tokenizer = compile("(?:(\s+)|([^(){}\[\]+\-!^\"~*?:\\\&\|\s]+)|([(){}\[\]\"])|([+\-!^~*?:\\\]|\&\&|\|\|))")
@@ -118,7 +118,7 @@ def quote(term):
                 new = Group(start='(',end=')')
                 stack.add(new)
             elif grouping in ']})':
-                if stack.current.end == grouping:
+                if isinstance(stack.current, Group) and stack.current.end == grouping:
                     stack.current.isgroup = True
                     stack.pop()
                 else:
@@ -128,14 +128,16 @@ def quote(term):
             stack.current.append(text)
 
         elif special:
-            if isinstance(stack.current, Quote):
-                stack.current.append('\\%s'%special)
-            elif special == '\\':
-                # Inspect next to see if it's quoted special
+            if special == '\\':
+                # Inspect next to see if it's quoted special or quoted group
                 if (i+1)<stop:
-                    _, _, _, s2 = tokens[i+1]
+                    _, _, g2, s2 = tokens[i+1]
                     if s2:
                         stack.current.append('%s%s' % (special, s2))
+                        # Jump ahead
+                        i+=1
+                    elif g2:
+                        stack.current.append('%s%s' % (special, g2))
                         # Jump ahead
                         i+=1
                     else:
@@ -144,6 +146,8 @@ def quote(term):
                 else:
                     # Quote it
                     stack.current.append('\\\\')
+            elif isinstance(stack.current, Quote):
+                stack.current.append('\\%s'%special)
             elif special in '+-':
                 if (i+1)<stop:
                     _, t2, g2, _ = tokens[i+1]
