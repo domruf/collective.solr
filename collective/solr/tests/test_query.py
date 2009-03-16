@@ -213,7 +213,6 @@ class QueryTests(TestCase):
         self.assertEqual(bq('"foo bar"'), '+"foo bar"')
         self.assertEqual(bq('foo bar'), '+(foo bar)')
         self.assertEqual(bq('"foo bar?"'), '+"foo bar\?"')
-        self.assertEqual(bq('"foo bar?"'), '+"foo bar\?"')
         self.assertEqual(bq('foo bar?'), '+(foo bar?)')
         self.assertEqual(bq('-foo +bar'), '+(-foo +bar)')
         self.assertEqual(bq('"-foo +bar"'), '+"\-foo \+bar"')
