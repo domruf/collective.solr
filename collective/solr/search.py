@@ -32,12 +32,12 @@ class Search(object):
         connection = manager.getConnection()
         if connection is None:
             raise SolrInactiveException
-        if not parameters.has_key('rows'):
+        if not 'rows' in parameters:
             config = queryUtility(ISolrConnectionConfig)
             parameters['rows'] = config.max_results or ''
         logger.debug('searching for %r (%r)', query, parameters)
         response = connection.search(q=query, **parameters)
-        return getattr(SolrResponse(response), 'response', [])
+        return SolrResponse(response)
 
     __call__ = search
 
@@ -51,7 +51,8 @@ class Search(object):
         for name, value in args.items():
             field = schema.get(name or defaultSearchField, None)
             if field is None or not field.indexed:
-                logger.debug('dropping unknown search attribute "%s" (%r)', name, value)
+                logger.debug('dropping unknown search attribute "%s" (%r)',
+                    name, value)
                 continue
             if isinstance(value, bool):
                 value = str(value).lower()
@@ -61,10 +62,11 @@ class Search(object):
                 value = '(%s)' % ' '.join(map(quote, value))
             elif isinstance(value, basestring):
                 value = quote(value)
-                if not value:       # don't search for an empty string, even if quoted
+                if not value:   # don't search for empty strings, even quoted
                     continue
             else:
-                logger.info('skipping unsupported value "%r" (%s)', value, name)
+                logger.info('skipping unsupported value "%r" (%s)',
+                    value, name)
                 continue
             if name is None:
                 if value and value[0] not in '+-':
@@ -75,4 +77,3 @@ class Search(object):
         query = ' '.join(query)
         logger.debug('built query "%s"', query)
         return query
-

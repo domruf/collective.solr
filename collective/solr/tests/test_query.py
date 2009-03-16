@@ -141,8 +141,8 @@ class QueryTests(TestCase):
         self.mngr = SolrConnectionManager()
         self.mngr.setHost(active=True)
         conn = self.mngr.getConnection()
-        fakehttp(conn, getData('schema.xml'))       # fake schema response
-        self.mngr.getSchema()                       # read and cache the schema
+        fakehttp(conn, getData('schema.xml'))   # fake schema response
+        self.mngr.getSchema()                   # read and cache the schema
         self.search = Search()
         self.search.manager = self.mngr
 
@@ -179,7 +179,8 @@ class QueryTests(TestCase):
     def testMultiArgumentQueries(self):
         bq = self.search.buildQuery
         self.assertEqual(bq('foo', name='bar'), '+foo +name:bar')
-        self.assertEqual(bq('foo', name=('bar', 'hmm')), '+foo +name:(bar hmm)')
+        self.assertEqual(bq('foo', name=('bar', 'hmm')),
+            '+foo +name:(bar hmm)')
         self.assertEqual(bq(name='foo', cat='bar'), '+name:foo +cat:bar')
         self.assertEqual(bq(name='foo', cat=['bar', 'hmm']), '+name:foo +cat:(bar hmm)')
         self.assertEqual(bq('foo', name=' '), '+foo')
@@ -268,7 +269,7 @@ class SearchTests(TestCase):
         request = getData('search_request.txt')
         output = fakehttp(self.conn, schema, search)    # fake responses
         query = self.search.buildQuery(id='[* TO *]')
-        results = self.search(query, rows=10, wt='xml', indent='on')
+        results = self.search(query, rows=10, wt='xml', indent='on').results()
         normalize = lambda x: sorted(x.split('&'))      # sort request params
         self.assertEqual(normalize(output.get(skip=1)), normalize(request))
         self.assertEqual(results.numFound, '1')
@@ -278,7 +279,8 @@ class SearchTests(TestCase):
         self.assertEqual(match.name, 'python test doc')
         self.assertEqual(match.popularity, 0)
         self.assertEqual(match.sku, '500')
-        self.assertEqual(match.timestamp, DateTime('2008-02-29 16:11:46.998 GMT'))
+        self.assertEqual(match.timestamp,
+            DateTime('2008-02-29 16:11:46.998 GMT'))
 
 
 def test_suite():
@@ -286,4 +288,3 @@ def test_suite():
 
 if __name__ == '__main__':
     main(defaultTest='test_suite')
-

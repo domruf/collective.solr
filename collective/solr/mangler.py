@@ -17,6 +17,7 @@ query_args = ('range',
               'depth',
 )
 
+
 def convert(value):
     """ convert values, which need a special format, i.e. dates """
     if isinstance(value, DateTime):
@@ -37,7 +38,7 @@ def mangleQuery(keywords):
     for key, value in keywords.items():
         if key.endswith('_usage'):          # convert old-style parameters
             category, spec = value.split(':', 1)
-            extras[key[:-6]] = { category: spec }
+            extras[key[:-6]] = {category: spec}
             del keywords[key]
         elif isinstance(value, dict):       # unify dict parameters
             keywords[key] = value['query']
@@ -57,7 +58,7 @@ def mangleQuery(keywords):
         if key == 'path':
             path = keywords['parentPaths'] = value
             del keywords[key]
-            if args.has_key('depth'):
+            if 'depth' in args:
                 depth = len(path.split('/')) + int(args['depth'])
                 keywords['physicalDepth'] = '[* TO %d]' % depth
                 del args['depth']
@@ -66,13 +67,13 @@ def mangleQuery(keywords):
             del keywords[key]
             keywords['effective'] = '[* TO %s]' % value
             keywords['expires'] = '[%s TO *]' % value
-        elif args.has_key('range'):
+        elif 'range' in args:
             if not isinstance(value, (list, tuple)):
-                value = [ value ]
+                value = [value]
             payload = map(convert, value)
             keywords[key] = ranges[args['range']] % tuple(payload)
             del args['range']
-        elif args.has_key('operator'):
+        elif 'operator' in args:
             if isinstance(value, (list, tuple)) and len(value) > 1:
                 sep = ' %s ' % args['operator'].upper()
                 value = sep.join(map(str, map(convert, value)))
@@ -104,6 +105,11 @@ def extractQueryParameters(args):
     limit = get('limit')
     if limit:
         params['rows'] = int(limit)
+    for key, value in args.items():
+        if key == 'facet' or key.startswith('facet.'):
+            params[key] = value
+        elif key.startswith('facet_'):
+            params[key.replace('_', '.', 1)] = value
     return params
 
 
@@ -113,7 +119,7 @@ def cleanupQueryParameters(args, schema):
     sort = args.get('sort', None)
     if sort is not None:
         field, order = sort.split(' ', 1)
-        if not schema.has_key(field):
+        if not field in schema:
             field = sort_aliases.get(field, None)
         fld = schema.get(field, None)
         if fld is not None and fld.indexed:
@@ -121,4 +127,3 @@ def cleanupQueryParameters(args, schema):
         else:
             del args['sort']
     return args
-
