@@ -40,7 +40,7 @@ class QuoteTests(TestCase):
         self.assertEqual(quote('\?'), '\?')
         self.assertEqual(quote('john@foo.com'), 'john@foo.com')
         self.assertEqual(quote('http://machine/folder and item and some/path and and amilli3*'),
-                                '(http\://machine/folder and item and some/path and and amilli3*)')
+                               '(http\://machine/folder and item and some/path and and amilli3*)')
         self.assertEqual(quote('"[]"'), '"\[\]"')
         self.assertEqual(quote('"{}"'), '"\{\}"')
         self.assertEqual(quote('"()"'), '"\(\)"')
@@ -68,10 +68,12 @@ class QuoteTests(TestCase):
 
     def testQuotingRangeSearches(self):
         self.assertEqual(quote('[* TO NOW]'), '[* TO NOW]')
-        self.assertEqual(quote('[1972-05-11T00:00:00.000Z TO *]'), '[1972-05-11T00:00:00.000Z TO *]')
+        self.assertEqual(quote('[1972-05-11T00:00:00.000Z TO *]'),
+                               '[1972-05-11T00:00:00.000Z TO *]')
         self.assertEqual(quote('[1972-05-11T00:00:00.000Z TO 2011-05-10T01:30:00.000Z]'),
-                                '[1972-05-11T00:00:00.000Z TO 2011-05-10T01:30:00.000Z]')
-        self.assertEqual(quote('[20020101 TO 20030101]'), '[20020101 TO 20030101]')
+                               '[1972-05-11T00:00:00.000Z TO 2011-05-10T01:30:00.000Z]')
+        self.assertEqual(quote('[20020101 TO 20030101]'),
+                               '[20020101 TO 20030101]')
         self.assertEqual(quote('{Aida TO Carmen}'), '{Aida TO Carmen}')
         self.assertEqual(quote('{Aida TO}'), '{Aida TO *}')
         self.assertEqual(quote('{TO Carmen}'), '{* TO Carmen}')
@@ -79,16 +81,23 @@ class QuoteTests(TestCase):
     def testQuotingBoostingTerm(self):
         self.assertEqual(quote('jakarta^4 apache'), '(jakarta^4 apache)')
         self.assertEqual(quote('jakarta^0.2 apache'), '(jakarta^0.2 apache)')
-        self.assertEqual(quote('"jakarta apache"^4 "Apache Lucene"'), '("jakarta apache"^4 "Apache Lucene")')
+        self.assertEqual(quote('"jakarta apache"^4 "Apache Lucene"'),
+                               '("jakarta apache"^4 "Apache Lucene")')
 
     def testQuotingOperatorsGrouping(self):
-        self.assertEqual(quote('+return +"pink panther"'), '(+return +"pink panther")')
+        self.assertEqual(quote('+return +"pink panther"'),
+                               '(+return +"pink panther")')
         self.assertEqual(quote('+jakarta lucene'), '(+jakarta lucene)')
-        self.assertEqual(quote('"jakarta apache" -"Apache Lucene"'), '("jakarta apache" -"Apache Lucene")')
-        self.assertEqual(quote('"jakarta apache" NOT "Apache Lucene"'), '("jakarta apache" NOT "Apache Lucene")')
-        self.assertEqual(quote('"jakarta apache" OR jakarta'), '("jakarta apache" OR jakarta)')
-        self.assertEqual(quote('"jakarta apache" AND "Apache Lucene"'), '("jakarta apache" AND "Apache Lucene")')
-        self.assertEqual(quote('(jakarta OR apache) AND website'), '((jakarta OR apache) AND website)')
+        self.assertEqual(quote('"jakarta apache" -"Apache Lucene"'),
+                               '("jakarta apache" -"Apache Lucene")')
+        self.assertEqual(quote('"jakarta apache" NOT "Apache Lucene"'),
+                               '("jakarta apache" NOT "Apache Lucene")')
+        self.assertEqual(quote('"jakarta apache" OR jakarta'),
+                               '("jakarta apache" OR jakarta)')
+        self.assertEqual(quote('"jakarta apache" AND "Apache Lucene"'),
+                               '("jakarta apache" AND "Apache Lucene")')
+        self.assertEqual(quote('(jakarta OR apache) AND website'),
+                               '((jakarta OR apache) AND website)')
         self.assertEqual(quote('(a AND (b OR c))'), '(a AND (b OR c))')
         self.assertEqual(quote('((a AND b) OR c)'), '((a AND b) OR c)')
 
@@ -110,13 +119,16 @@ class QuoteTests(TestCase):
 
     def testSolrSpecifics(self):
         # http://wiki.apache.org/solr/SolrQuerySyntax
-        self.assertEqual(quote('"recip(rord(myfield),1,2,3)"'), '"recip\(rord\(myfield\),1,2,3\)"') # Seems to be ok to quote function
+        self.assertEqual(quote('"recip(rord(myfield),1,2,3)"'),
+                               '"recip\(rord\(myfield\),1,2,3\)"') # Seems to be ok to quote function
         self.assertEqual(quote('[* TO NOW]'), '[* TO NOW]')
-        self.assertEqual(quote('[1976-03-06T23:59:59.999Z TO *]'), '[1976-03-06T23:59:59.999Z TO *]')
-        self.assertEqual(quote('[1995-12-31T23:59:59.999Z TO 2007-03-06T00:00:00Z]'), 
+        self.assertEqual(quote('[1976-03-06T23:59:59.999Z TO *]'),
+                               '[1976-03-06T23:59:59.999Z TO *]')
+        self.assertEqual(quote('[1995-12-31T23:59:59.999Z TO 2007-03-06T00:00:00Z]'),
                                '[1995-12-31T23:59:59.999Z TO 2007-03-06T00:00:00Z]')
-        self.assertEqual(quote('[NOW-1YEAR/DAY TO NOW/DAY+1DAY]'), '[NOW-1YEAR/DAY TO NOW/DAY+1DAY]')
-        self.assertEqual(quote('[1976-03-06T23:59:59.999Z TO 1976-03-06T23:59:59.999Z+1YEAR]'), 
+        self.assertEqual(quote('[NOW-1YEAR/DAY TO NOW/DAY+1DAY]'),
+                               '[NOW-1YEAR/DAY TO NOW/DAY+1DAY]')
+        self.assertEqual(quote('[1976-03-06T23:59:59.999Z TO 1976-03-06T23:59:59.999Z+1YEAR]'),
                                '[1976-03-06T23:59:59.999Z TO 1976-03-06T23:59:59.999Z+1YEAR]')
         self.assertEqual(quote('[1976-03-06T23:59:59.999Z/YEAR TO 1976-03-06T23:59:59.999Z]'),
                                '[1976-03-06T23:59:59.999Z/YEAR TO 1976-03-06T23:59:59.999Z]')
