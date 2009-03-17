@@ -170,19 +170,24 @@ class QueryTests(TestCase):
         bq = self.search.buildQuery
         self.assertEqual(bq(('foo', 'bar')), '+(foo bar)')
         self.assertEqual(bq(('foo', 'bar*')), '+(foo bar*)')
-        self.assertEqual(bq(('foo bar', 'hmm')), '+((foo bar) hmm)')
+        self.assertEqual(bq(('foo bar', 'hmm')), '+("foo bar" hmm)')
+        self.assertEqual(bq(('foø bar', 'hmm')), '+("fo\xc3\xb8 bar" hmm)')
         self.assertEqual(bq(('"foo bar"', 'hmm')), '+("foo bar" hmm)')
         self.assertEqual(bq(name=['foo', 'bar']), '+name:(foo bar)')
         self.assertEqual(bq(name=['foo', 'bar*']), '+name:(foo bar*)')
-        self.assertEqual(bq(name=['foo bar', 'hmm']), '+name:((foo bar) hmm)')
+        self.assertEqual(bq(name=['foo bar', 'hmm']), '+name:("foo bar" hmm)')
 
     def testMultiArgumentQueries(self):
         bq = self.search.buildQuery
         self.assertEqual(bq('foo', name='bar'), '+foo +name:bar')
         self.assertEqual(bq('foo', name=('bar', 'hmm')),
             '+foo +name:(bar hmm)')
+        self.assertEqual(bq('foo', name=('foo bar', 'hmm')),
+            '+foo +name:("foo bar" hmm)')
         self.assertEqual(bq(name='foo', cat='bar'), '+name:foo +cat:bar')
         self.assertEqual(bq(name='foo', cat=['bar', 'hmm']), '+name:foo +cat:(bar hmm)')
+        self.assertEqual(bq(name='foo', cat=['foo bar', 'hmm']),
+            '+name:foo +cat:("foo bar" hmm)')
         self.assertEqual(bq('foo', name=' '), '+foo')
         self.assertEqual(bq('foo', name=''), '+foo')
 

@@ -59,7 +59,16 @@ class Search(object):
             elif not value:     # solr doesn't like empty fields (+foo:"")
                 continue
             elif isinstance(value, (tuple, list)):
-                value = '(%s)' % ' '.join(map(quote, value))
+                # list items should be treated as literals, but
+                # nevertheless only get quoted when necessary
+                def quoteitem(term):
+                    if isinstance(term, unicode):
+                        term = term.encode('utf-8')
+                    quoted = quote(term)
+                    if not quoted.startswith('"') and not quoted == term:
+                        quoted = quote('"' + term + '"')
+                    return quoted
+                value = '(%s)' % ' '.join(map(quoteitem, value))
             elif isinstance(value, basestring):
                 value = quote(value)
                 if not value:   # don't search for empty strings, even quoted
