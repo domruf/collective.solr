@@ -23,7 +23,7 @@ def searchResults(self, REQUEST=None, **kw):
 
     # support collective.indexing's "auto-flush" feature
     # see http://dev.plone.org/collective/changeset/73602
-    autoFlushQueue()
+    autoFlushQueue(REQUEST, kw, self)
 
     adapter = queryAdapter(self, ISearchDispatcher)
     if adapter is not None:
