@@ -1,5 +1,11 @@
 from zope.interface import Interface
-from Products.CMFPlone.CatalogTool import registerIndexableAttribute
+
+try:
+    # BBB: Pre Plone 3.3
+    from Products.CMFPlone.CatalogTool import registerIndexableAttribute
+except ImportError:
+    registerIndexableAttribute = None
+
 from plone.indexer import indexer
 
 
@@ -27,6 +33,8 @@ parentPathsIndexer = indexer(Interface)(parentPaths)
 
 
 def registerAttributes():
-    registerIndexableAttribute('physicalPath', physicalPath)
-    registerIndexableAttribute('physicalDepth', physicalDepth)
-    registerIndexableAttribute('parentPaths', parentPaths)
+    if registerIndexableAttribute is not None:
+        registerIndexableAttribute('physicalPath', physicalPath)
+        registerIndexableAttribute('physicalDepth', physicalDepth)
+        registerIndexableAttribute('parentPaths', parentPaths)
+    
