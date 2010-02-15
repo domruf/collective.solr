@@ -109,3 +109,18 @@ An easy way to make sure no results are ever returned is to clear the index:
     ...We...re sorry, but that page doesn...t exist...
     ...You might have been looking for...
 
+Portlet Collection
+------------------
+Collection portlet use object_provides index. Lets add some searchable text in news aggregator
+
+  >>> browser.open('http://nohost/plone/news/aggregator/edit')
+  >>> browser.getControl('Text').value="Some text to index"
+  >>> browser.getControl('Save').click()
+  >>> browser.open('http://nohost/plone/@@manage-portlets')
+  >>> browser.getControl('Add portlet', index=0).control.displayValue = ['Collection portlet']
+  >>> browser.getControl('Add portlet', index=1).click()
+  >>> browser.getControl(name='form.target_collection.query').value = 'text'
+  >>> browser.getControl('Search',index=2).click()
+  >>> '/aggregator' in browser.contents
+  
+  
