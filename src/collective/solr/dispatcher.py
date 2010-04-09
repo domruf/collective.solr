@@ -17,9 +17,6 @@ from collective.solr.monkey import patchCatalogTool, patchLazyCat
 patchCatalogTool()      # patch catalog tool to use the dispatcher...
 patchLazyCat()          # ...as well as ZCatalog's Lazy class
 
-from collective.solr.attributes import registerAttributes
-registerAttributes()    # register additional indexable attributes
-
 
 class FallBackException(Exception):
     """ exception indicating the dispatcher should fall back to searching
@@ -75,6 +72,8 @@ def solrSearchResults(request=None, **keywords):
             raise FallBackException
     schema = search.getManager().getSchema() or {}
     params = cleanupQueryParameters(extractQueryParameters(args), schema)
+    if 'path' in args and 'navtree' in args['path']:
+        raise FallBackException
     mangleQuery(args)
     prepareData(args)
     query = search.buildQuery(**args)

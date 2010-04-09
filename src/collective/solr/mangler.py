@@ -62,9 +62,18 @@ def mangleQuery(keywords):
             path = keywords['parentPaths'] = value
             del keywords[key]
             if 'depth' in args:
-                depth = len(path.split('/')) + int(args['depth'])
-                keywords['physicalDepth'] = '[* TO %d]' % depth
+                if isinstance(path, list):
+                    path = max(path)
+                mindepth = len(path.split('/')) + 1
+                maxdepth = len(path.split('/')) + int(args['depth']) + 0
+                if maxdepth<mindepth:
+                    maxdepth = mindepth
+                keywords['physicalDepth'] = '[%d TO %d]' % (mindepth,maxdepth)
                 del args['depth']
+#            elif 'navtree' in args:
+#                wholepath = ''
+#                for pathstep in path.split('/'):
+#                    wholepath += '/' + pathstep
         elif key == 'effectiveRange':
             value = convert(value)
             del keywords[key]
@@ -82,6 +91,9 @@ def mangleQuery(keywords):
                 value = sep.join(map(str, map(convert, value)))
                 keywords[key] = '(%s)' % value
             del args['operator']
+        elif 'navtree' in args:
+            #TODO: implement navtree generation
+            del args['navtree']
         elif isinstance(value, basestring) and value.endswith('*'):
             keywords[key] = '%s' % value.lower()
         else:
@@ -156,3 +168,5 @@ def optimizeQueryParameters(query, params):
             params['fq'] = [params['fq']] + fq
     elif fq:
         params['fq'] = fq
+    if not query:
+        query['*'] = '*:*'

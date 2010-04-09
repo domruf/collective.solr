@@ -126,8 +126,9 @@ class SolrMaintenanceView(BrowserView):
                 flare.update(values)
                 conn.add(**flare)
             updates.clear()     # clear pending updates
-            log('intermediate commit (%d items processed, '
-                'last batch in %s)...\n' % (processed, lap.next()))
+            msg = 'intermediate commit (%d items processed, last batch in %s)...\n' % (processed, lap.next())
+            log(msg)
+            logger.info(msg)
             conn.commit()
             manager.getConnection().reset()     # force new connection
             if cache:

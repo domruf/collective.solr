@@ -10,9 +10,7 @@
     <index-timeout value="0" />
     <search-timeout value="0" />
     <max-results value="0" />
-    <required-query-parameters>
-      <parameter name="SearchableText" />
-    </required-query-parameters>
+    <required-query-parameters />
     <search-facets>
       <parameter name="portal_type" />
       <parameter name="review_state" />
