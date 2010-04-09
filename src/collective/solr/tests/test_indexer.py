@@ -51,19 +51,6 @@ class QueueIndexerTests(TestCase):
         prepareData(data)
         self.assertEqual(data, {'allowedRolesAndUsers': ['user$test_user_1_', 'user$portal_owner']})
 
-    def testLanguageParameterHandling(self):
-        # empty strings are replaced...
-        data = {'Language': ['en', '']}
-        prepareData(data)
-        self.assertEqual(data, {'Language': ['en', 'any']})
-        data = {'Language': ''}
-        prepareData(data)
-        self.assertEqual(data, {'Language': 'any'})
-        # for other indices this shouldn't happen...
-        data = {'Foo': ['en', '']}
-        prepareData(data)
-        self.assertEqual(data, {'Foo': ['en', '']})
-
     def testIndexObject(self):
         response = getData('add_response.txt')
         output = fakehttp(self.mngr.getConnection(), response)   # fake add response
@@ -83,12 +70,8 @@ class QueueIndexerTests(TestCase):
         self.proc.index(foo, attributes=['id', 'name'])
         output = str(output)
         self.assert_(output.find('<field name="name">foo</field>') > 0, '"name" data not found')
-        # at this point we'd normally check for a partial update:
-        #   self.assertEqual(output.find('price'), -1, '"price" data found?')
-        #   self.assertEqual(output.find('42'), -1, '"price" data found?')
-        # however, until SOLR-139 has been implemented (re)index operations
-        # always need to provide data for all attributes in the schema...
-        self.assert_(output.find('<field name="price">42.0</field>') > 0, '"price" data not found')
+        self.assertEqual(output.find('price'), -1, '"price" data found?')
+        self.assertEqual(output.find('42'), -1, '"price" data found?')
 
     def testDateIndexing(self):
         foo = Foo(id='zeidler', name='andi', cat='nerd', timestamp=DateTime('May 11 1972 03:45 GMT'))
@@ -157,7 +140,7 @@ class RobustnessTests(TestCase):
 
     def testIndexingWithUniqueKeyMissing(self):
         fakehttp(self.conn, getData('simple_schema.xml'))   # fake schema response
-        self.mngr.getSchema()                               # read and cache the schema
+        schema = self.mngr.getSchema()                      # read and cache the schema
         response = getData('add_response.txt')
         output = fakehttp(self.conn, response)              # fake add response
         foo = Foo(id='500', name='foo')
@@ -168,7 +151,7 @@ class RobustnessTests(TestCase):
 
     def testUnindexingWithUniqueKeyMissing(self):
         fakehttp(self.conn, getData('simple_schema.xml'))   # fake schema response
-        self.mngr.getSchema()                               # read and cache the schema
+        schema = self.mngr.getSchema()                      # read and cache the schema
         response = getData('delete_response.txt')
         output = fakehttp(self.conn, response)              # fake delete response
         foo = Foo(id='500', name='foo')

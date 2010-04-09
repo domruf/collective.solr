@@ -47,39 +47,6 @@ For outstanding issues and features remaining to be implemented please see the
   .. __: http://plone.org/products/collective.solr/issues
 
 
-Installation
-------------
-
-The following buildout configuration may be used to get started quickly::
-
-  [buildout]
-  extends =
-    buildout.cfg
-    http://svn.plone.org/svn/collective/collective.solr/trunk/buildout/solr-1.3.cfg
-
-  [instance]
-  eggs += collective.solr
-  zcml += collective.solr
-
-After saving this to let's say ``solr.cfg`` buildout can be run and the
-`Solr`_ server and `Plone`_ instance started::
-
-  $ python bootstrap.py
-  $ bin/buildout -c solr.cfg
-  ...
-  $ bin/solr-instance start
-  $ bin/instance start
-
-Next the "collective.solr (site search)" profile should be applied via the
-portal setup or when creating a fresh Plone site.  After activating and
-configuring the integration in the Plone control panel and initially indexing
-any existing content using the provided maintenance view:
-
-  http://localhost:8080/plone/@@solr-maintenance/reindex
-
-facet information should appear in Plone's search results page.
-
-
 FAQs / Troubleshooting
 ----------------------
 
@@ -101,31 +68,6 @@ FAQs / Troubleshooting
     on your site root object, typically located at
     http://localhost:8080/plone/manage_components, to remove the broken
     utilities from the XML.  Search for "broken".
-
-
-**Searches only return up to 10 results**
-
-  Symptom
-    Searches don't display `more than 10 results`__ even though there are
-    more matches and "Maximum search results" is set to "0" (to always return
-    all results).
-  Problem
-    With the default setting for "Maximum search results" (i.e. "0") no
-    `rows`_ parameter is included when sending queries to Solr.  This results
-    in Solr's default setting to be applied, and both its internal default
-    (when removing the parameter from `solrconfig.xml`) as well as the
-    "max-num-results" option in `collective.recipe.solrinstance`__ end up
-    with a value of 10.
-  Solution
-    Please update your buildout to use a higher setting for "max-num-results".
-    It should be higher than or equal to the maximum number of total search
-    results you'd like to get from your site.  The `sample configuration`__
-    uses a value of "1000".
-
-  .. __: http://plone.org/products/collective.solr/issues/20
-  .. _`rows`: http://wiki.apache.org/solr/CommonQueryParameters#rows
-  .. __: http://pypi.python.org/pypi/collective.recipe.solrinstance/
-  .. __: http://svn.plone.org/svn/collective/collective.solr/trunk/buildout/solr.cfg
 
 
 Credits

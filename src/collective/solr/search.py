@@ -1,7 +1,6 @@
 from logging import getLogger
 from zope.interface import implements
 from zope.component import queryUtility
-from Missing import MV
 
 from collective.solr.interfaces import ISolrConnectionConfig
 from collective.solr.interfaces import ISolrConnectionManager
@@ -38,12 +37,6 @@ class Search(object):
         if isinstance(query, dict):
             query = ' '.join(query.values())
         logger.debug('searching for %r (%r)', query, parameters)
-        if 'sort' in parameters:    # issue warning for unknown sort indices
-            index, order = parameters['sort'].split()
-            schema = manager.getSchema() or {}
-            field = schema.get(index, None)
-            if field is None or not field.stored:
-                logger.warning('sorting on non-stored attribute "%s"', index)
         response = connection.search(q=query, **parameters)
         results = SolrResponse(response)
         response.close()
@@ -62,23 +55,13 @@ class Search(object):
         for name, value in args.items():
             field = schema.get(name or defaultSearchField, None)
             if field is None or not field.indexed:
-                logger.warning('dropping unknown search attribute "%s" (%r)',
-                        name, value)
+                logger.debug('dropping unknown search attribute "%s" (%r)',
+                    name, value)
                 continue
             if isinstance(value, bool):
                 value = str(value).lower()
             elif not value:     # solr doesn't like empty fields (+foo:"")
                 continue
-            elif field.class_ == 'solr.BoolField':
-                if not isinstance(value, (tuple, list)):
-                    value = [value]
-                falses = '0', 'False', MV
-                true = lambda v: bool(v) and v not in falses
-                value = set(map(true, value))
-                if not len(value) == 1:
-                    assert len(value) == 2      # just to make sure
-                    continue                    # skip when "true or false"
-                value = str(value.pop()).lower()
             elif isinstance(value, (tuple, list)):
                 # list items should be treated as literals, but
                 # nevertheless only get quoted when necessary

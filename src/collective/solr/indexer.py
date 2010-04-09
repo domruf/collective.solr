@@ -20,7 +20,7 @@ logger = getLogger('collective.solr.indexer')
 
 def indexable(obj):
     """ indicate whether a given object should be indexed; for now only
-        objects inheriting one of the catalog mixin classes are considered """
+        objects inheriting one of the catalog mixin classes are considerd """
     return isinstance(obj, CatalogMultiplex) or \
         isinstance(obj, CMFCatalogAware)
 
@@ -28,8 +28,6 @@ def indexable(obj):
 def datehandler(value):
     # TODO: we might want to handle datetime and time as well;
     # check the enfold.solr implementation
-    if value is None:
-        raise AttributeError
     if isinstance(value, str) and not value.endswith('Z'):
         value = DateTime(value)
     if isinstance(value, DateTime):
@@ -39,10 +37,7 @@ def datehandler(value):
     return value
 
 
-handlers = {
-    'solr.DateField': datehandler,
-    'solr.TrieDateField': datehandler,
-}
+handlers = {'solr.DateField': datehandler}
 
 
 class SolrIndexProcessor(object):
@@ -50,25 +45,14 @@ class SolrIndexProcessor(object):
     implements(ISolrIndexQueueProcessor)
 
     def __init__(self, manager=None):
-        self.manager = manager
+        self.manager = manager      # for testing purposes only
 
     def index(self, obj, attributes=None):
         conn = self.getConnection()
         if conn is not None and indexable(obj):
-            # unfortunately with current versions of solr we need to provide
-            # data for _all_ fields during an <add> -- partial updates aren't
-            # supported (see https://issues.apache.org/jira/browse/SOLR-139)
-            # however, the reindexing can be skipped if none of the given
-            # attributes match existing solr indexes...
-            schema = self.manager.getSchema()
-            if attributes is not None:
-                attributes = set(schema.keys()).intersection(attributes)
-                if not attributes:
-                    return
-            data, missing = self.getData(obj)
-            if not data:
-                return          # don't index with no data...
+            data, missing = self.getData(obj, attributes)
             prepareData(data)
+            schema = self.manager.getSchema()
             if schema is None:
                 msg = 'unable to fetch schema, skipping indexing of %r'
                 logger.warning(msg, obj)
@@ -178,6 +162,8 @@ class SolrIndexProcessor(object):
             return {}, ()
         if attributes is None:
             attributes = schema.keys()
+        else:
+            attributes = set(schema.keys()).intersection(set(attributes))
         obj = self.wrapObject(obj)
         data, marker = {}, []
         for name in attributes:
@@ -190,10 +176,7 @@ class SolrIndexProcessor(object):
             field = schema[name]
             handler = handlers.get(field.class_, None)
             if handler is not None:
-                try:
-                    value = handler(value)
-                except AttributeError:
-                    continue
+                value = handler(value)
             elif isinstance(value, (list, tuple)) and not field.multiValued:
                 separator = getattr(field, 'separator', ' ')
                 value = separator.join(value)

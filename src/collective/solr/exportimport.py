@@ -1,4 +1,3 @@
-from persistent.interfaces import IPersistent
 from zope.component import queryUtility
 from Products.GenericSetup.utils import exportObjects
 from Products.GenericSetup.utils import importObjects
@@ -137,8 +136,7 @@ def importSolrSettings(context):
         logger = context.getLogger('collective.solr')
         logger.info('Nothing to import.')
         return
-    if IPersistent.providedBy(utility):
-        importObjects(utility, '', context)
+    importObjects(utility, '', context)
 
 
 def exportSolrSettings(context):
@@ -149,5 +147,4 @@ def exportSolrSettings(context):
         logger = context.getLogger('collective.solr')
         logger.info('Nothing to export.')
         return
-    if IPersistent.providedBy(utility):
-        exportObjects(utility, '', context)
+    exportObjects(utility, '', context)

@@ -7,10 +7,6 @@
   float: right;
 }
 
-* html #portal-searchfacets {
-  width: 20%;
-}
-
 #portal-searchfacets h4 {
   font-weight: normal;
   margin: 0;
@@ -32,7 +28,6 @@
   font-size: 90%;
   float: left;
   clear: both;
-  white-space: nowrap;
 }
 
 #portal-searchfacets dd {

@@ -117,13 +117,13 @@ class FacettingHelperTest(TestCase):
         params = lambda query: sorted(map(unquote, query.split('&')))
         self.assertEqual(counts[0]['name'], 'Document')
         self.assertEqual(params(counts[0]['query']), [
-            'foo=bar', 'fq=portal_type:"Document"'])
+            'foo=bar', 'fq=portal_type:Document'])
         self.assertEqual(counts[1]['name'], 'Event')
         self.assertEqual(params(counts[1]['query']), [
-            'foo=bar', 'fq=portal_type:"Event"'])
+            'foo=bar', 'fq=portal_type:Event'])
         self.assertEqual(counts[2]['name'], 'Folder')
         self.assertEqual(params(counts[2]['query']), [
-            'foo=bar', 'fq=portal_type:"Folder"'])
+            'foo=bar', 'fq=portal_type:Folder'])
 
     def testFacetLinksWithSelectedFacet(self):
         context = Dummy()
@@ -136,10 +136,10 @@ class FacettingHelperTest(TestCase):
         params = lambda query: sorted(map(unquote, query.split('&')))
         self.assertEqual(counts[0]['name'], 'published')
         self.assertEqual(params(counts[0]['query']), [
-            'facet.field=bar', 'foo=bar', 'fq=foo:"published"'])
+            'facet.field=bar', 'foo=bar', 'fq=foo:published'])
         self.assertEqual(counts[1]['name'], 'private')
         self.assertEqual(params(counts[1]['query']), [
-            'facet.field=bar', 'foo=bar', 'fq=foo:"private"'])
+            'facet.field=bar', 'foo=bar', 'fq=foo:private'])
 
     def testFacetLinksWithMultipleFacets(self):
         context = Dummy()
@@ -153,18 +153,18 @@ class FacettingHelperTest(TestCase):
         self.assertEqual(len(bars), 2)
         params = lambda query: sorted(map(unquote, query.split('&')))
         self.assertEqual(params(bars[0]['query']), [
-            'facet.field=foo', 'fq=bar:"published"'])
+            'facet.field=foo', 'fq=bar:published'])
         self.assertEqual(params(bars[1]['query']), [
-            'facet.field=foo', 'fq=bar:"private"'])
+            'facet.field=foo', 'fq=bar:private'])
         # and also the one for 'foo'
         foos = info[0]['counts']
         self.assertEqual(len(foos), 3)
         self.assertEqual(params(foos[0]['query']), [
-            'facet.field=bar', 'fq=foo:"Document"'])
+            'facet.field=bar', 'fq=foo:Document'])
         self.assertEqual(params(foos[1]['query']), [
-            'facet.field=bar', 'fq=foo:"Event"'])
+            'facet.field=bar', 'fq=foo:Event'])
         self.assertEqual(params(foos[2]['query']), [
-            'facet.field=bar', 'fq=foo:"Folder"'])
+            'facet.field=bar', 'fq=foo:Folder'])
 
     def testFacetLinksWithMultipleSelectedFacets(self):
         context = Dummy()
@@ -175,9 +175,9 @@ class FacettingHelperTest(TestCase):
         counts = info[0]['counts']
         params = lambda query: sorted(map(unquote, query.split('&')))
         self.assertEqual(params(counts[0]['query']), [
-            'fq=bar:private', 'fq=foo:"Document"'])
+            'fq=bar:private', 'fq=foo:Document'])
         self.assertEqual(params(counts[1]['query']), [
-            'fq=bar:private', 'fq=foo:"Folder"'])
+            'fq=bar:private', 'fq=foo:Folder'])
 
     def testSelectedFacetsInformation(self):
         request = TestRequest()
@@ -187,47 +187,47 @@ class FacettingHelperTest(TestCase):
         # so let's select one...
         params = lambda query: sorted(map(unquote, query.split('&')))
         info = lambda: [(i['title'], params(i['query'])) for i in selected()]
-        request.form['fq'] = 'foo:"xy"'
+        request.form['fq'] = 'foo:xy'
         self.assertEqual(info(), [
             ('foo', ['facet.field=foo']),
         ])
         # and then some more...
-        request.form['fq'] = ['foo:"x"', 'bar:"y"']
+        request.form['fq'] = ['foo:x', 'bar:y']
         self.assertEqual(info(), [
-            ('foo', ['facet.field=foo', 'fq=bar:"y"']),
-            ('bar', ['facet.field=bar', 'fq=foo:"x"']),
+            ('foo', ['facet.field=foo', 'fq=bar:y']),
+            ('bar', ['facet.field=bar', 'fq=foo:x']),
         ])
-        request.form['fq'] = ['foo:"x"', 'bar:"y"', 'bah:"z"']
+        request.form['fq'] = ['foo:x', 'bar:y', 'bah:z']
         self.assertEqual(info(), [
-            ('foo', ['facet.field=foo', 'fq=bah:"z"', 'fq=bar:"y"']),
-            ('bar', ['facet.field=bar', 'fq=bah:"z"', 'fq=foo:"x"']),
-            ('bah', ['facet.field=bah', 'fq=bar:"y"', 'fq=foo:"x"']),
+            ('foo', ['facet.field=foo', 'fq=bah:z', 'fq=bar:y']),
+            ('bar', ['facet.field=bar', 'fq=bah:z', 'fq=foo:x']),
+            ('bah', ['facet.field=bah', 'fq=bar:y', 'fq=foo:x']),
         ])
         # extra parameter should be left untouched
         request.form['foo'] = 'bar'
         self.assertEqual(info(), [
-            ('foo', ['facet.field=foo', 'foo=bar', 'fq=bah:"z"', 'fq=bar:"y"']),
-            ('bar', ['facet.field=bar', 'foo=bar', 'fq=bah:"z"', 'fq=foo:"x"']),
-            ('bah', ['facet.field=bah', 'foo=bar', 'fq=bar:"y"', 'fq=foo:"x"']),
+            ('foo', ['facet.field=foo', 'foo=bar', 'fq=bah:z', 'fq=bar:y']),
+            ('bar', ['facet.field=bar', 'foo=bar', 'fq=bah:z', 'fq=foo:x']),
+            ('bah', ['facet.field=bah', 'foo=bar', 'fq=bar:y', 'fq=foo:x']),
         ])
         # an existing 'facet.field' parameter should be preserved
         del request.form['foo']
         request.form['facet.field'] = 'x'
         self.assertEqual(info(), [
-            ('foo', ['facet.field=foo', 'facet.field=x', 'fq=bah:"z"', 'fq=bar:"y"']),
-            ('bar', ['facet.field=bar', 'facet.field=x', 'fq=bah:"z"', 'fq=foo:"x"']),
-            ('bah', ['facet.field=bah', 'facet.field=x', 'fq=bar:"y"', 'fq=foo:"x"']),
+            ('foo', ['facet.field=foo', 'facet.field=x', 'fq=bah:z', 'fq=bar:y']),
+            ('bar', ['facet.field=bar', 'facet.field=x', 'fq=bah:z', 'fq=foo:x']),
+            ('bah', ['facet.field=bah', 'facet.field=x', 'fq=bar:y', 'fq=foo:x']),
         ])
 
     def testSelectedFacetValues(self):
         request = TestRequest()
         selected = SearchFacetsView(Dummy(), request).selected
         info = lambda: [(i['title'], i['value']) for i in selected()]
-        request.form['fq'] = 'foo:"xy"'
+        request.form['fq'] = 'foo:xy'
         self.assertEqual(info(), [('foo', 'xy')])
-        request.form['fq'] = ['foo:"x"', 'bar:"y"']
+        request.form['fq'] = ['foo:x', 'bar:y']
         self.assertEqual(info(), [('foo', 'x'), ('bar', 'y')])
-        request.form['fq'] = ['foo:"x"', 'bar:"y"', 'bah:"z"']
+        request.form['fq'] = ['foo:x', 'bar:y', 'bah:z']
         self.assertEqual(info(), [('foo', 'x'), ('bar', 'y'), ('bah', 'z')])
 
     def testEmptyFacetField(self):

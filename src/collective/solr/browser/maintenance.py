@@ -5,11 +5,11 @@ from zope.component import queryUtility
 from Products.Five.browser import BrowserView
 from Products.CMFCore.utils import getToolByName
 
-from collective.indexing.indexer import getOwnIndexMethod
 from collective.solr.interfaces import ISolrConnectionManager
+from collective.solr.interfaces import ISolrIndexQueueProcessor
 from collective.solr.interfaces import ISolrMaintenanceView
 from collective.solr.interfaces import ISearch
-from collective.solr.indexer import indexable, handlers, SolrIndexProcessor
+from collective.solr.indexer import indexable, handlers
 from collective.solr.utils import findObjects
 from collective.solr.utils import prepareData
 
@@ -36,39 +36,7 @@ def checkpointIterator(function, interval=100):
         yield None
 
 
-def notimeout(func):
-    """ decorator to prevent long-running solr tasks from timing out """
-    def wrapper(*args, **kw):
-        """ wrapper with random docstring so ttw access still works """
-        manager = queryUtility(ISolrConnectionManager)
-        manager.setTimeout(None, lock=True)
-        try:
-            return func(*args, **kw)
-        finally:
-            manager.setTimeout(None, lock=False)
-    return wrapper
-
-
-def missingAndStored(attributes, schema):
-    """ determine the sets of attributes that need to be fetched from
-        the objects and what can be completed using data in solr """
-    missing = set()
-    stored = set()
-    if attributes is not None:
-        key = schema.uniqueKey
-        if not key in attributes:
-            missing.add(key)
-        for field in schema.fields():
-            if field.name in attributes:
-                continue
-            elif not field.stored:      # fields not stored need to be added
-                missing.add(field.name)
-            elif not field.name in attributes:
-                stored.add(field.name)
-    return missing, stored
-
-
-def solrDataFor(uids, fields):
+def solrDataFor(uids):
     """ fetch existing index data from solr for object with given uids """
     manager = queryUtility(ISolrConnectionManager)
     search = queryUtility(ISearch)
@@ -90,13 +58,15 @@ def solrDataFor(uids, fields):
     # query & convert data for given uids
     key = schema.uniqueKey
     query = '+%s:(%s)' % (key, ' OR '.join(uids))
-    for flare in search(query, rows=len(uids), fl=' '.join(fields)):
+    flares = {}
+    for flare in search(query, rows=len(uids)):
         uid = getattr(flare, key)
         assert uid, 'empty unique key?'
         for name, conv in converters.items():
             if name in flare:
                 flare[name] = conv(flare[name])
-        yield uid, flare
+        flares[uid] = flare
+    return flares
 
 
 class SolrMaintenanceView(BrowserView):
@@ -130,11 +100,12 @@ class SolrMaintenanceView(BrowserView):
         conn.commit()
         return 'solr index cleared.'
 
-    def reindex(self, batch=100, skip=0, cache=10000, attributes=None, wait=True):
+    def reindex(self, batch=100, skip=0, cache=1000, attributes=None):
         """ find all contentish objects (meaning all objects derived from one
             of the catalog mixin classes) and (re)indexes them """
         manager = queryUtility(ISolrConnectionManager)
-        proc = SolrIndexProcessor(manager)
+        manager.setTimeout(None, lock=True) # don't time out during reindexing
+        proc = queryUtility(ISolrIndexQueueProcessor, name='solr')
         db = self.context.getPhysicalRoot()._p_jar.db()
         log = self.mklog()
         log('reindexing solr catalog...\n')
@@ -145,26 +116,19 @@ class SolrMaintenanceView(BrowserView):
         cpu = timer(clock)      # cpu time
         processed = 0
         conn = manager.getConnection()
-        schema = manager.getSchema()
-        key = schema.uniqueKey
-        stored = None
-        if attributes is not None:
-            missing, stored = missingAndStored(attributes, schema)
-            attributes.extend(list(missing))
+        key = manager.getSchema().uniqueKey
         updates = {}            # list to hold data to be updated
-        commit = lambda: conn.commit(waitFlush=wait, waitSearcher=wait)
-        commit = notimeout(commit)
         def checkPoint():
-            if stored:          # only populate with data from solr if necessary
-                uids = updates.keys()
-                for uid, flare in solrDataFor(uids, stored):
-                    updates[uid].update(flare)
-            for data in updates.values():
-                conn.add(**data)
+            uids = updates.keys()
+            flares = solrDataFor(uids)
+            for uid, values in updates.items():
+                flare = flares.get(uid, {key: uid})
+                flare.update(values)
+                conn.add(**flare)
             updates.clear()     # clear pending updates
             log('intermediate commit (%d items processed, '
                 'last batch in %s)...\n' % (processed, lap.next()))
-            commit()
+            conn.commit()
             manager.getConnection().reset()     # force new connection
             if cache:
                 size = db.cacheSize()
@@ -174,11 +138,10 @@ class SolrMaintenanceView(BrowserView):
         single = timer()        # real time for single object
         cpi = checkpointIterator(checkPoint, batch)
         count = 0
+        if attributes is not None and not key in attributes:
+            attributes.append(key)
         for path, obj in findObjects(self.context):
             if indexable(obj):
-                if getOwnIndexMethod(obj, 'indexObject') is not None:
-                    log('skipping indexing of %r via private method.\n' % obj)
-                    continue
                 count += 1
                 if count <= skip:
                     continue
@@ -194,13 +157,14 @@ class SolrMaintenanceView(BrowserView):
                 else:
                     log('missing data, skipping indexing of %r.\n' % obj)
         checkPoint()            # make sure to process the last batch
+        manager.setTimeout(None, lock=False)    # reset the timeout lock
         log('solr index rebuilt.\n')
         msg = 'processed %d items in %s (%s cpu time).'
         msg = msg % (processed, real.next(), cpu.next())
         log(msg)
         logger.info(msg)
 
-    def metadata(self, index, key, func=lambda x: x, path='/'):
+    def metadata(self, index, key, func=lambda x: x):
         """ build a mapping between a unique key and a given attribute from
             the portal catalog; catalog metadata must exist for the given
             index """
@@ -211,21 +175,20 @@ class SolrMaintenanceView(BrowserView):
         for uid, rids in cat.getIndex(key).items():
             for rid in rids:
                 value = cat.data[rid][pos]
-                if value is not None and cat.paths[rid].startswith(path):
+                if value is not None:
                     data[uid] = func(value)
         return data
 
-    def diff(self, path):
+    def diff(self):
         """ determine objects that need to be indexed/reindex/unindexed by
             diff'ing the records in the portal catalog and solr """
         key = queryUtility(ISolrConnectionManager).getSchema().uniqueKey
-        uids = self.metadata('modified', key=key,
-            func=lambda x: x.millis(), path=path)
+        uids = self.metadata('modified', key=key, func=lambda x: x.millis())
         search = queryUtility(ISearch)
         reindex = []
         unindex = []
         rows = len(uids) * 10               # sys.maxint makes solr choke :(
-        query = '+%s:[* TO *] +parentPaths:%s' % (key, path)
+        query = '%s:[* TO *]' % key
         for flare in search(query, rows=rows, fl='%s modified' % key):
             uid = getattr(flare, key)
             assert uid, 'empty unique key?'
@@ -238,34 +201,30 @@ class SolrMaintenanceView(BrowserView):
         index = uids.keys()
         return index, reindex, unindex
 
-    def sync(self, batch=100, cache=10000):
+    def sync(self, batch=100, cache=1000):
         """ sync the solr index with the portal catalog;  records contained
             in the catalog but not in solr will be indexed and records not
             contained in the catalog can be optionally removed;  this can
             be used to ensure consistency between zope and solr after the
             solr server has been unavailable etc """
         manager = queryUtility(ISolrConnectionManager)
-        proc = SolrIndexProcessor(manager)
+        manager.setTimeout(None, lock=True) # don't time out during reindexing
+        proc = queryUtility(ISolrIndexQueueProcessor, name='solr')
         db = self.context.getPhysicalRoot()._p_jar.db()
         log = self.mklog()
         real = timer()          # real time
         lap = timer()           # real lap time (for intermediate commits)
         cpu = timer(clock)      # cpu time
-        path = '/'.join(self.context.getPhysicalPath())
-        log('determining differences between portal catalog and solr '
-            '(from "%s")...' % path)
-        index, reindex, unindex = self.diff(path)
+        log('determining differences between portal catalog and solr...')
+        index, reindex, unindex = self.diff()
         log(' (%s).\n' % lap.next(), timestamp=False)
         log('operations needed: %d "index", %d "reindex", %d "unindex"\n' % (
             len(index), len(reindex), len(unindex)))
         processed = 0
-        commit = notimeout(lambda: proc.commit(wait=True))
         def checkPoint():
-            msg = 'intermediate commit (%d objects processed, ' \
-                  'last batch in %s)...\n' % (processed, lap.next())
-            log(msg)
-            logger.info(msg)
-            commit()
+            log('intermediate commit (%d objects processed, '
+                'last batch in %s)...\n' % (processed, lap.next()))
+            proc.commit(wait=True)
             manager.getConnection().reset()     # force new connection
             if cache:
                 size = db.cacheSize()
@@ -276,12 +235,11 @@ class SolrMaintenanceView(BrowserView):
         cpi = checkpointIterator(checkPoint, batch)
         lookup = getToolByName(self.context, 'reference_catalog').lookupObject
         log('processing %d "index" operations next...\n' % len(index))
-        op = notimeout(lambda obj: proc.index(obj))
         for uid in index:
             obj = lookup(uid)
             if indexable(obj):
                 log('indexing %r' % obj)
-                op(obj)
+                proc.index(obj)
                 processed += 1
                 log(' (%s).\n' % single.next(), timestamp=False)
                 cpi.next()
@@ -289,12 +247,11 @@ class SolrMaintenanceView(BrowserView):
             else:
                 log('not indexing unindexable object %r.\n' % obj)
         log('processing %d "reindex" operations next...\n' % len(reindex))
-        op = notimeout(lambda obj: proc.reindex(obj))
         for uid in reindex:
             obj = lookup(uid)
             if indexable(obj):
                 log('reindexing %r' % obj)
-                op(obj)
+                proc.reindex(obj)
                 processed += 1
                 log(' (%s).\n' % single.next(), timestamp=False)
                 cpi.next()
@@ -302,22 +259,64 @@ class SolrMaintenanceView(BrowserView):
             else:
                 log('not reindexing unindexable object %r.\n' % obj)
         log('processing %d "unindex" operations next...\n' % len(unindex))
-        conn = manager.getConnection()
-        op = notimeout(lambda uid: conn.delete(id=uid))
+        conn = proc.getConnection()
         for uid in unindex:
             obj = lookup(uid)
             if obj is None:
                 log('unindexing %r' % uid)
-                op(uid)
+                conn.delete(id=uid)
                 processed += 1
                 log(' (%s).\n' % single.next(), timestamp=False)
                 cpi.next()
                 single.next()   # don't count commit time here...
             else:
                 log('not unindexing existing object %r (%r).\n' % (obj, uid))
-        commit()                # make sure to commit in the end...
+        proc.commit(wait=True)      # make sure to commit in the end...
+        manager.setTimeout(None, lock=False)    # reset the timeout lock
         log('solr index synced.\n')
         msg = 'processed %d object(s) in %s (%s cpu time).'
+        msg = msg % (processed, real.next(), cpu.next())
+        log(msg)
+        logger.info(msg)
+
+    def catalogSync(self, index, batch=1000):
+        """ add or sync a single solr index using data from the portal
+            catalog;  existing data in solr will be overwritten for the
+            given index """
+        manager = queryUtility(ISolrConnectionManager)
+        manager.setTimeout(None, lock=True) # don't time out during reindexing
+        log = self.mklog()
+        log('getting data for "%s" from portal catalog...\n' % index)
+        key = manager.getSchema().uniqueKey
+        data = self.metadata(index, key=key)
+        log('syncing "%s" from portal catalog to solr...\n' % index)
+        real = timer()          # real time
+        lap = timer()           # real lap time (for intermediate commits)
+        cpu = timer(clock)      # cpu time
+        processed = 0
+        conn = manager.getConnection()
+        updates = {}            # list to hold data to be updated
+        def checkPoint():
+            uids = updates.keys()
+            flares = solrDataFor(uids)
+            for uid, value in updates.items():
+                flare = flares.get(uid, {key: uid})
+                flare[index] = value
+                conn.add(**flare)
+            updates.clear()     # clear pending updates
+            log('intermediate commit (%d items processed, '
+                'last batch in %s)...\n' % (processed, lap.next()))
+            conn.commit()
+            manager.getConnection().reset()     # force new connection
+        cpi = checkpointIterator(checkPoint, batch)
+        for uid, value in data.items():
+            updates[uid] = value
+            processed += 1
+            cpi.next()
+        checkPoint()            # make sure to process the last batch
+        manager.setTimeout(None, lock=False)    # reset the timeout lock
+        log('portal catalog data synced.\n')
+        msg = 'processed %d items in %s (%s cpu time).'
         msg = msg % (processed, real.next(), cpu.next())
         log(msg)
         logger.info(msg)

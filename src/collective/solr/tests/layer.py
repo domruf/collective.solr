@@ -1,13 +1,16 @@
-from Testing.ZopeTestCase import installPackage, installProduct
+from Testing.ZopeTestCase import app, close, installPackage
 from Products.Five import zcml
 from Products.Five import fiveconfigure
-from collective.testcaselayer.ptc import BasePTCLayer, ptc_layer
+from Products.CMFCore.utils import getToolByName
+from Products.PloneTestCase.layer import PloneSite
+from transaction import commit
 
 
-class SolrLayer(BasePTCLayer):
+class SolrLayer(PloneSite):
     """ layer for solr integration tests """
 
-    def afterSetUp(self):
+    @classmethod
+    def setUp(cls):
         # load zcml
         fiveconfigure.debug_mode = True
         from collective import indexing, solr
@@ -15,24 +18,15 @@ class SolrLayer(BasePTCLayer):
         zcml.load_config('configure.zcml', solr)
         fiveconfigure.debug_mode = False
         # install package, import profile...
-        installPackage('collective.indexing', quiet=True)
         installPackage('collective.solr', quiet=True)
-        # finally load the testing profile
-        self.addProfile('collective.solr:search')
+        root = app()
+        profile = 'profile-collective.solr:search'
+        tool = getToolByName(root.plone, 'portal_setup')
+        tool.runAllImportStepsFromProfile(profile, purge_old=False)
+        # and commit the changes
+        commit()
+        close(root)
 
-layer = solr = SolrLayer(bases=[ptc_layer])
-
-
-class BlobLinguaLayer(BasePTCLayer):
-    """ layer for integration tests with LinguaPlone """
-
-    def afterSetUp(self):
-        # load zcml
-        fiveconfigure.debug_mode = True
-        from Products import LinguaPlone
-        zcml.load_config('configure.zcml', LinguaPlone)
-        fiveconfigure.debug_mode = False
-        installProduct('LinguaPlone', quiet=True)
-        self.addProfile('LinguaPlone:default')
-
-lingua = SolrLayer(bases=[layer])
+    @classmethod
+    def tearDown(cls):
+        pass

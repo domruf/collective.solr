@@ -13,9 +13,14 @@ logger = getLogger('collective.solr.manager')
 marker = object()
 
 
-class BaseSolrConnectionConfig(object):
+class SolrConnectionConfig(Persistent):
     """ utility to hold the connection configuration for the solr server """
     implements(ISolrConnectionConfig)
+
+    max_results = 0             # provide backwards compatibility
+    required = []
+    facets = []
+    filter_queries = []
 
     def __init__(self):
         self.active = False
@@ -29,14 +34,6 @@ class BaseSolrConnectionConfig(object):
         self.required = []
         self.facets = []
         self.filter_queries = []
-
-
-class SolrConnectionConfig(BaseSolrConnectionConfig, Persistent):
-
-    max_results = 0             # provide backwards compatibility
-    required = ()
-    facets = ()
-    filter_queries = ()
 
     def getId(self):
         """ return a unique id to be used with GenericSetup """
@@ -103,15 +100,11 @@ class SolrConnectionManager(object):
     def setTimeout(self, timeout, lock=marker):
         """ set the timeout on the current (or to be opened) connection
             to the given value """
-        update = not self.lock          # update if not locked...
         if lock is not marker:
             self.lock = bool(lock)
-            update = True               # ...or changed
-            logger.debug('%ssetting timeout lock', lock and '' or 're')
-        if update:
+        if not self.lock:
             conn = self.getConnection()
             if conn is not None:
-                logger.debug('setting timeout to %s', timeout)
                 conn.setTimeout(timeout)
 
     def setIndexTimeout(self):
