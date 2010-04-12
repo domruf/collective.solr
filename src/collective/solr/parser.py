@@ -29,6 +29,14 @@ class SolrFlare(AttrDict):
 class SolrResults(list):
     """ a list of results returned from solr, i.e. sol(a)r flares """
 
+class LazyDateTime(DateTime):
+    """Ignores parsing errors"""
+    
+    def __init__(self,*args, **kw):
+        try:
+            return self._parse_args(*args, **kw)
+        except:
+            return None
 
 # unmarshallers for basic types
 unmarshallers = {
@@ -39,7 +47,7 @@ unmarshallers = {
     'long': long,
     'bool': lambda x: x == 'true',
     'str': lambda x: x or '',
-    'date': DateTime,
+    'date': LazyDateTime,
 }
 
 # nesting tags along with their factories
