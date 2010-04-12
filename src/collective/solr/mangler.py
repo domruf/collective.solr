@@ -29,8 +29,6 @@ def convert(value):
             v.month(), v.day(), v.hour(), v.minute(), v.second())
     elif isinstance(value, basestring):
         value = quote(value)
-    elif isinstance(value, bool):
-        value = str(value).lower()
     return value
 
 
@@ -79,6 +77,8 @@ def mangleQuery(keywords):
             del keywords[key]
             keywords['effective'] = '[* TO %s]' % value
             keywords['expires'] = '[%s TO *]' % value
+        elif key == 'show_inactive':
+            del keywords[key]           # marker for `effectiveRange`
         elif 'range' in args:
             if not isinstance(value, (list, tuple)):
                 value = [value]
@@ -103,11 +103,13 @@ def mangleQuery(keywords):
 
 def extractQueryParameters(args):
     """ extract parameters related to sorting and limiting search results
-        from a given set of arguments """
+        from a given set of arguments, also removing them """
     def get(name):
         for prefix in 'sort_', 'sort-':
-            value = args.get('%s%s' % (prefix, name), None)
+            key = '%s%s' % (prefix, name)
+            value = args.get(key, None)
             if value is not None:
+                del args[key]
                 return value
         return None
     params = {}
@@ -123,6 +125,7 @@ def extractQueryParameters(args):
     for key, value in args.items():
         if key in ('fq', 'fl', 'facet'):
             params[key] = value
+            del args[key]
         elif key.startswith('facet.') or key.startswith('facet_'):
             name = lambda facet: facet.split(':', 1)[0]
             if isinstance(value, list):
@@ -132,6 +135,7 @@ def extractQueryParameters(args):
             else:
                 value = name(value)
             params[key.replace('_', '.', 1)] = value
+            del args[key]
     return params
 
 
@@ -148,6 +152,8 @@ def cleanupQueryParameters(args, schema):
             args['sort'] = '%s %s' % (field, order)
         else:
             del args['sort']
+    if 'facet.field' in args and not 'facet' in args:
+        args['facet'] = 'true'
     return args
 
 

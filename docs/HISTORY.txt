@@ -1,6 +1,165 @@
 Changelog
 =========
 
+1.0b23 - Unreleased
+-------------------
+
+* Don't process content with its own indexing methods, e.g. `reindexObject`,
+  via the `reindex` maintenance view.
+  [witsch]
+
+* Let query builder handle sets of possible boolean values as passed by
+  boolean topic criteria for example.
+  [hannosch, witsch]
+
+* Recognize new ``solr.TrieDateField`` field type and handle it in the same
+  way as we handle the older ``solr.DateField``.
+  [hannosch]
+
+* Warn about missing search indices and non-stored sort parameters.
+  [witsch]
+
+* Fix issue when reindexing objects with empty date fields.
+  [witsch]
+
+* Changed the default schema for ``is_folderish`` to store the value. The
+  reference browser search expects it on the brain.
+  [hannosch]
+
+* Changed the GenericSetup export/import handler for the Solr manager to
+  ignore non-persistent utilities.
+  [hannosch]
+
+* Add support for LinguaPlone.
+  [witsch]
+
+* Update sample Solr buildout configuration and documentation to recommend a
+  high enough default setting for maximum search results returned by Solr.
+  This refs http://plone.org/products/collective.solr/issues/20
+  [witsch]
+
+
+1.0b22 - Released February 23, 2010
+-----------------------------------
+
+* Split out a ``BaseSolrConnectionConfig`` class, to be used for registering a
+  non-persistent connection configuration.
+  [hannosch]
+
+* Fix bug regarding timeout locking.
+  [witsch]
+
+* Convert test setup to `collective.testcaselayer`.
+  [witsch]
+
+* Only apply timeout decorator when actually committing changes to Solr,
+  also re-enabling the use of query parameters for maintenance views again.
+  [witsch]
+
+* We also need to change the ``SearchDispatcher`` to use the original method
+  in case Solr isn't active.
+  [hannosch]
+
+* Changed the ``searchResults`` monkey to store and use the method found on
+  the class instead of assuming it comes from the base class.  This makes
+  things work with `LinguaPlone` which also patches this method.
+  [hannosch]
+
+* Add dutch translation.
+  [WouterVH]
+
+* Refactor buildout to allow running tests against Plone 4.x.
+  [witsch]
+
+* Optimize reindex behavior when populating the Solr index for the first time.
+  [hannosch, witsch]
+
+* Only register indexable attributes the old way on Plone 3.x.
+  [jcbrand]
+
+* Fix timeout decorator to work ttw.
+  [hannosch, witsch]
+
+* Add "z3c.autoinclude.plugin" entry point, so in Plone 3.3+ you can avoid
+  loading the ZCML file.
+  [hannosch]
+
+
+1.0b21 - Released February 11, 2010
+-----------------------------------
+
+* Fix unindexing to not fetch more data from the objects than necessary.
+  [witsch]
+
+* Use decorator to lock timeouts and make sure the lock is always released.
+  [witsch]
+
+* Fix maintenance views to work without setting up a Solr connection first.
+  [witsch]
+
+
+1.0b20 - Released January 26, 2010
+----------------------------------
+
+* Fix reindexing to always provide data for all fields defined in the schema
+  as support for "updateable/modifiable documents" is only planned for Solr
+  1.5.  See https://issues.apache.org/jira/browse/SOLR-139 for more info.
+  [witsch]
+
+* Fix CSS issues regarding facet display on IE6.
+  [witsch]
+
+
+1.0b19 - Released January 24, 2010
+----------------------------------
+
+* Fix partial reindexing to preserve data for indices that are not stored.
+  [witsch]
+
+* Help with improved logging of auto-flushes for easier performance tuning.
+  [witsch]
+
+
+1.0b18 - Released January 23, 2010
+----------------------------------
+
+* Work around layout issue regarding facet counts on IE6.
+  [witsch]
+
+
+1.0b17 - Released January 21, 2010
+----------------------------------
+
+* Don't confuse pre-configured filter queries with facet selections.
+  [witsch]
+
+* Always display selected facets, even, or especially, without search results.
+  [witsch]
+
+
+1.0b16 - Released January 11, 2010
+----------------------------------
+
+* Remove `catalogSync` maintenance view since it would need to fetch
+  additional data (for non-stored indices) from the objects themselves in
+  order to work correctly.
+  [witsch]
+
+* Fix `reindex` maintenance view to preserve data that cannot be fetched from
+  Solr during partial indexing, i.e. indices that are not stored.
+  [witsch]
+
+* Use wildcard searches for simple search terms to reflect Plone's default
+  behaviour.
+  [witsch]
+
+* Fix drill-down for facet values containing white space.
+  [witsch]
+
+* Add support for partial syncing of catalog and solr indexes.
+  [witsch]
+
+
 1.0b15 - Released October 12, 2009
 ----------------------------------
 
@@ -112,7 +271,7 @@ Changelog
   [witsch]
 
   .. _`plone.indexer`: http://pypi.python.org/pypi/plone.indexer/
-  .. _`PLIP 239`: http://plone.org/products/plone/roadmap/239 
+  .. _`PLIP 239`: http://plone.org/products/plone/roadmap/239
 
 
 1.0b7 - Released April 28, 2009
@@ -148,7 +307,7 @@ Changelog
 * Parse and quote the query to filter invalid query syntax.
   [tesdal]
 
-* In solrSearchResults, if the passed in request is a dict, look up 
+* In solrSearchResults, if the passed in request is a dict, look up
   request to enable adaptation into PloneFlare.
   [tesdal]
 

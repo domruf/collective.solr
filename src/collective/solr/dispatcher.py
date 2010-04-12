@@ -1,6 +1,7 @@
 from zope.interface import implements
 from zope.component import queryUtility, queryMultiAdapter, getSiteManager
 from zope.publisher.interfaces.http import IHTTPRequest
+from Acquisition import aq_base
 from Products.ZCatalog.ZCatalog import ZCatalog
 
 from collective.solr.interfaces import ISolrConnectionConfig
@@ -12,6 +13,7 @@ from collective.solr.mangler import mangleQuery
 from collective.solr.mangler import extractQueryParameters
 from collective.solr.mangler import cleanupQueryParameters
 from collective.solr.mangler import optimizeQueryParameters
+from collective.solr.lingua import languageFilter
 
 from collective.solr.monkey import patchCatalogTool, patchLazyCat
 patchCatalogTool()      # patch catalog tool to use the dispatcher...
@@ -38,6 +40,8 @@ class SearchDispatcher(object):
                 return solrSearchResults(request, **keywords)
             except FallBackException:
                 pass
+        if getattr(aq_base(self.context), '_cs_old_searchResults', None):
+            return self.context._cs_old_searchResults(request, **keywords)
         return ZCatalog.searchResults(self.context, request, **keywords)
 
 
@@ -66,7 +70,7 @@ def solrSearchResults(request=None, **keywords):
         required = set(config.required).intersection(args)
         if required:
             for key in required:
-                if not args[key]:
+                if not key in args:
                     raise FallBackException
         else:
             raise FallBackException
@@ -74,6 +78,7 @@ def solrSearchResults(request=None, **keywords):
     params = cleanupQueryParameters(extractQueryParameters(args), schema)
     if 'path' in args and 'navtree' in args['path']:
         raise FallBackException
+    languageFilter(args)
     mangleQuery(args)
     prepareData(args)
     query = search.buildQuery(**args)

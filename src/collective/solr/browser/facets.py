@@ -41,7 +41,7 @@ def convertFacets(fields, context=None, request={}, filter=None):
     info = []
     params = request.copy()   # request needs to be a dict, i.e. request.form
     facets, dependencies = list(facetParameters(context, request))
-    params['facet.field'] = facets
+    params['facet.field'] = facets = list(facets)
     fq = params.get('fq', [])
     if isinstance(fq, basestring):
         fq = params['fq'] = [fq]
@@ -51,7 +51,7 @@ def convertFacets(fields, context=None, request={}, filter=None):
         second = lambda a, b: cmp(b[1], a[1])
         for name, count in sorted(values.items(), cmp=second):
             p = deepcopy(params)
-            p.setdefault('fq', []).append('%s:%s' % (field, name.encode('utf-8')))
+            p.setdefault('fq', []).append('%s:"%s"' % (field, name.encode('utf-8')))
             if field in p.get('facet.field', []):
                 p['facet.field'].remove(field)
             if filter is None or filter(name, count):
@@ -121,6 +121,7 @@ class SearchFacetsView(BrowserView, FacetMixin):
             params['fq'] = fq[:idx] + fq[idx+1:]
             if field not in facets:
                 params['facet.field'] = facets + [field]
-            info.append(dict(title=field, value=value,
-                query=urlencode(params, doseq=True)))
+            if value.startswith('"') and value.endswith('"'):
+                info.append(dict(title=field, value=value[1:-1],
+                    query=urlencode(params, doseq=True)))
         return info

@@ -34,12 +34,20 @@ setup(name = 'collective.solr',
       platforms = 'Any',
       zip_safe = False,
       install_requires=[
-          'setuptools',
-          'elementtree',
-          'collective.indexing',
-          'plone.browserlayer',
-          'collective.js.showmore',
-          'plone.indexer',
+        'setuptools',
+        'elementtree',
+        'collective.indexing >1.6',
+        'plone.browserlayer',
+        'collective.js.showmore',
+        'plone.indexer',
       ],
-      entry_points = '',
+      extras_require = { 'test': [
+        'collective.testcaselayer',
+        'PIL',
+        'Products.LinguaPlone >=3.1a1',
+      ]},
+      entry_points = '''
+        [z3c.autoinclude.plugin]
+        target = plone
+      ''',
 )

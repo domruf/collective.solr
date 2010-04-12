@@ -5,6 +5,7 @@ This tests the integration of Solr's facetted searches into Plone.  We'll
 use a testbrowser to check the correct display of facets.  First we need to
 activate Solr support and reindex the site's content:
 
+  >>> self.folder.setTitle('My folder')
   >>> self.activateAndReindex()
 
 The search form should contain default settings for facets to be shown:
@@ -63,7 +64,7 @@ Clicking on of the facets should restrict the search:
 
   >>> browser.getLink('Topic').click()
   >>> browser.url
-  'http://nohost/plone/search?...&fq=portal_type%3ATopic...'
+  'http://nohost/plone/search?...&fq=portal_type%3A%22Topic%22...'
   >>> 'facet.field=portal_type' in browser.url
   False
   >>> browser.contents
@@ -85,7 +86,7 @@ But the other facet should still be browsable:
 
   >>> browser.getLink('published').click()
   >>> browser.url
-  'http://nohost/plone/search?...fq=portal_type%3ATopic...fq=review_state%3Apublished...'
+  'http://nohost/plone/search?...fq=portal_type%3A%22Topic%22...fq=review_state%3A%22published%22...'
   >>> 'facet.field=' in browser.url
   False
   >>> browser.contents
@@ -136,3 +137,18 @@ the already selected facets:
    ...Topic...1...
    ...Large Folder...1...
    ...Site News...'
+
+The already selected facets should of course be displayed in case there were
+no search results, so the filters can be removed by the user.  So while at
+first no results will be shown, they should appear after removing the facet
+selection for "review_state":
+
+  >>> form = browser.getForm(name='searchform', index=0)
+  >>> form.getControl('Search Site').value = 'my'
+  >>> form.submit()
+  >>> browser.contents
+  '...No results were found...'
+  >>> browser.getLink('⊗').click()
+  >>> browser.contents
+  '...Search results...1 items matching...
+   ...My folder...'
