@@ -1,5 +1,5 @@
 from zope.interface import Interface
-from plone.indexer.decorator import indexer
+from plone.indexer import indexer
 
 @indexer(Interface)
 def physicalPath(obj, **kwargs):
@@ -26,3 +26,12 @@ physicalPathIndexer = indexer(Interface)(physicalPath)
 physicalDepthIndexer = indexer(Interface)(physicalDepth)
 parentPathsIndexer = indexer(Interface)(parentPaths)
 
+
+def registerAttributes():
+    try:
+        from Products.CMFPlone.CatalogTool import registerIndexableAttribute
+        registerIndexableAttribute('physicalPath', physicalPath)
+        registerIndexableAttribute('physicalDepth', physicalDepth)
+        registerIndexableAttribute('parentPaths', parentPaths)
+    except ImportError:
+        pass

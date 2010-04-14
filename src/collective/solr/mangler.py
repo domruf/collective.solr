@@ -68,10 +68,6 @@ def mangleQuery(keywords):
                     maxdepth = mindepth
                 keywords['physicalDepth'] = '[%d TO %d]' % (mindepth,maxdepth)
                 del args['depth']
-#            elif 'navtree' in args:
-#                wholepath = ''
-#                for pathstep in path.split('/'):
-#                    wholepath += '/' + pathstep
         elif key == 'effectiveRange':
             value = convert(value)
             del keywords[key]
