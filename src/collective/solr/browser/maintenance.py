@@ -5,6 +5,7 @@ from zope.component import queryUtility
 from Products.Five.browser import BrowserView
 from Products.CMFCore.utils import getToolByName
 
+from collective.indexing.indexer import getOwnIndexMethod
 from collective.solr.interfaces import ISolrConnectionManager
 from collective.solr.interfaces import ISolrMaintenanceView
 from collective.solr.interfaces import ISearch
@@ -161,7 +162,8 @@ class SolrMaintenanceView(BrowserView):
             for data in updates.values():
                 conn.add(**data)
             updates.clear()     # clear pending updates
-            msg = 'intermediate commit (%d items processed, last batch in %s)...\n' % (processed, lap.next())
+            msg = 'intermediate commit (%d items processed, ' \
+                  'last batch in %s)...\n' % (processed, lap.next())
             log(msg)
             logger.info(msg)
             commit()
@@ -176,6 +178,9 @@ class SolrMaintenanceView(BrowserView):
         count = 0
         for path, obj in findObjects(self.context):
             if indexable(obj):
+                if getOwnIndexMethod(obj, 'indexObject') is not None:
+                    log('skipping indexing of %r via private method.\n' % obj)
+                    continue
                 count += 1
                 if count <= skip:
                     continue
@@ -258,7 +263,7 @@ class SolrMaintenanceView(BrowserView):
         processed = 0
         commit = notimeout(lambda: proc.commit(wait=True))
         def checkPoint():
-            msg = 'intermediate commit (%d objects processed, ' \
+            msg = 'intermediate commit (%d items processed, ' \
                   'last batch in %s)...\n' % (processed, lap.next())
             log(msg)
             logger.info(msg)
