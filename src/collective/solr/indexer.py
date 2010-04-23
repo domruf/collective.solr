@@ -156,6 +156,8 @@ class SolrIndexProcessor(object):
         wrapper = obj
         # first try the new way, i.e. using `plone.indexer`...
         catalog = getToolByName(obj, 'portal_catalog', None)
+        if hasattr(catalog, 'getZCatalog'):
+            catalog = catalog.getZCatalog()
         adapter = queryMultiAdapter((obj, catalog), IIndexableObject)
         if adapter is not None:
             wrapper = adapter
