@@ -29,14 +29,15 @@ class SolrFlare(AttrDict):
 class SolrResults(list):
     """ a list of results returned from solr, i.e. sol(a)r flares """
 
-class LazyDateTime(DateTime):
-    """Ignores parsing errors"""
-    
-    def __init__(self,*args, **kw):
-        try:
-            return self._parse_args(*args, **kw)
-        except:
-            return None
+
+def parseDate(value):
+    """ use `DateTime` to parse a date, but take care of solr 1.4
+        stripping away leading zeros for the year representation """
+    if value.find('-') < 4:
+        year, rest = value.split('-', 1)        # re-add leading zeros
+        value = '%04d-%s' % (int(year), rest)
+    return DateTime(value)
+
 
 # unmarshallers for basic types
 unmarshallers = {
@@ -47,7 +48,7 @@ unmarshallers = {
     'long': long,
     'bool': lambda x: x == 'true',
     'str': lambda x: x or '',
-    'date': LazyDateTime,
+    'date': parseDate,
 }
 
 # nesting tags along with their factories

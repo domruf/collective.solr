@@ -94,7 +94,7 @@ class Search(object):
                 # nevertheless only get quoted when necessary
                 value = '(%s)' % ' OR '.join(map(quoteitem, value))
             elif isinstance(value, basestring):
-                value = quoteitem(value)
+                value = quote(value)
                 if not value:   # don't search for empty strings, even quoted
                     continue
             else:
