@@ -59,16 +59,6 @@ class Search(object):
         defaultSearchField = getattr(schema, 'defaultSearchField', None)
         args[None] = default
         query = {}
-        def quoteitem(term):
-            if isinstance(term, unicode):
-                term = term.encode('utf-8')
-            quoted = quote(term)
-            if not quoted.startswith('"') and not quoted == term:
-                quoted = quote('"' + term + '"')
-            if quoted == '':
-                quoted = '[* TO ""]'
-            return quoted
-
         for name, value in args.items():
             field = schema.get(name or defaultSearchField, None)
             if field is None or not field.indexed:
@@ -92,6 +82,13 @@ class Search(object):
             elif isinstance(value, (tuple, list)):
                 # list items should be treated as literals, but
                 # nevertheless only get quoted when necessary
+                def quoteitem(term):
+                    if isinstance(term, unicode):
+                        term = term.encode('utf-8')
+                    quoted = quote(term)
+                    if not quoted.startswith('"') and not quoted == term:
+                        quoted = quote('"' + term + '"')
+                    return quoted
                 value = '(%s)' % ' OR '.join(map(quoteitem, value))
             elif isinstance(value, set):        # set are taken literally
                 query[name] = '(%s)' % ' OR '.join(value)
