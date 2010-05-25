@@ -60,13 +60,15 @@ def mangleQuery(keywords):
             path = keywords['parentPaths'] = value
             del keywords[key]
             if 'depth' in args:
-                if isinstance(path, list):
-                    path = max(path)
-                mindepth = len(path.split('/')) + 1
-                maxdepth = len(path.split('/')) + int(args['depth']) + 0
-                if maxdepth<mindepth:
-                    maxdepth = mindepth
-                keywords['physicalDepth'] = '[%d TO %d]' % (mindepth,maxdepth)
+                depth = int(args['depth'])
+                if depth >= 0:
+                    if not isinstance(value, (list, tuple)):
+                        path = [path]
+                    tmpl = '(+physicalDepth:[%d TO %d] AND +parentPaths:%s)'
+                    params = keywords['parentPaths'] = set()
+                    for p in path:
+                        base = len(p.split('/'))
+                        params.add(tmpl % (base, base + depth, p))
                 del args['depth']
         elif key == 'effectiveRange':
             value = convert(value)
@@ -87,9 +89,6 @@ def mangleQuery(keywords):
                 value = sep.join(map(str, map(convert, value)))
                 keywords[key] = '(%s)' % value
             del args['operator']
-        elif 'navtree' in args:
-            #TODO: implement navtree generation
-            del args['navtree']
         elif isinstance(value, basestring) and value.endswith('*'):
             keywords[key] = '%s' % value.lower()
         else:
@@ -132,6 +131,9 @@ def extractQueryParameters(args):
                 value = name(value)
             params[key.replace('_', '.', 1)] = value
             del args[key]
+        elif key in ('start', 'rows'):
+            params[key] = int(value)
+            del args[key]
     return params
 
 
@@ -171,4 +173,4 @@ def optimizeQueryParameters(query, params):
     elif fq:
         params['fq'] = fq
     if not query:
-        query['*'] = '*:*'
+        query['*'] = '*:*'      # catch all if no regular query is left...

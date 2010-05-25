@@ -93,6 +93,9 @@ class Search(object):
                 # list items should be treated as literals, but
                 # nevertheless only get quoted when necessary
                 value = '(%s)' % ' OR '.join(map(quoteitem, value))
+            elif isinstance(value, set):        # set are taken literally
+                query[name] = '(%s)' % ' OR '.join(value)
+                continue
             elif isinstance(value, basestring):
                 value = quote(value)
                 if not value:   # don't search for empty strings, even quoted

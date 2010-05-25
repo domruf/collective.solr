@@ -1,9 +1,8 @@
-from zope.interface import implements
-from elementtree.ElementTree import iterparse
 from StringIO import StringIO
 from DateTime import DateTime
-
+from zope.interface import implements
 from collective.solr.interfaces import ISolrFlare
+from collective.solr.iterparse import iterparse
 
 
 class AttrDict(dict):
@@ -72,8 +71,8 @@ def setter(item, name, value):
 
 class SolrResponse(object):
     """ a solr search response; TODO: this should get an interface!! """
-    __allow_access_to_unprotected_subobjects__ = True
 
+    __allow_access_to_unprotected_subobjects__ = True
 
     def __init__(self, data=None):
         if data is not None:
@@ -173,8 +172,16 @@ class SolrSchema(AttrDict):
             elif elem.tag == 'solrQueryParser':
                 self[elem.tag] = AttrStr(elem.text, **elem.attrib)
 
+    @property
     def fields(self):
         """ return list of all fields the schema consists of """
         for name, field in self.items():
             if isinstance(field, SolrField):
                 yield field
+
+    @property
+    def stored(self):
+        """ return names of all stored fields, a.k.a. metadata """
+        for field in self.fields:
+            if field.stored:
+                yield field.name

@@ -1,19 +1,45 @@
 Changelog
 =========
 
-1.0b23 - Unreleased
+1.0b24 - Unreleased
 -------------------
+
+
+1.0b23 - Released May 15, 2010
+------------------------------
+
+* Add support for batching, i.e. only fetch and parse items from Solr,
+  which are part of the currently handled batch.
+  [witsch]
+
+* Fix quoting of operators for multi-word search terms.
+  [witsch]
+
+* Use the faster C implementations of `elementtree`/`xml.etree` if available.
+  [hannosch, witsch]
+
+* Grant restricted code access to the search results, e.g. skin scripts.
+  [do3cc, witsch]
+
+* Fix handling of 'depth' argument when querying multiple paths.
+  [reinhardt, witsch]
+
+* Don't break when filter queries should be used for all parameters.
+  [reinhardt, witsch]
+
+* Always provide values for all metadata columns like the catalog does.
+  [witsch]
 
 * Always fall back to portal catalog for "navtree" queries so the set of
   required query parameters can be empty.
   This refs http://plone.org/products/collective.solr/issues/18
-  [witsch]
+  [reinhardt, witsch]
 
 * Prevent parsing errors for dates from before 1000 A.D. in combination
   with 32-bit systems and Solr 1.4.
-  [witsch]
+  [reinhardt, witsch]
 
-* Don't process content with its own indexing methods, e.g. `reindexObject`,
+* Don't process content with its own indexing methods, e.g. ``reindexObject``,
   via the `reindex` maintenance view.
   [witsch]
 
@@ -39,7 +65,7 @@ Changelog
   ignore non-persistent utilities.
   [hannosch]
 
-* Add support for LinguaPlone.
+* Add support for `LinguaPlone`.
   [witsch]
 
 * Update sample Solr buildout configuration and documentation to recommend a

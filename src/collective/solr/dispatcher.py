@@ -2,6 +2,7 @@ from zope.interface import implements
 from zope.component import queryUtility, queryMultiAdapter, getSiteManager
 from zope.publisher.interfaces.http import IHTTPRequest
 from Acquisition import aq_base
+from Missing import MV
 from Products.ZCatalog.ZCatalog import ZCatalog
 
 from collective.solr.interfaces import ISolrConnectionConfig
@@ -9,6 +10,7 @@ from collective.solr.interfaces import ISearchDispatcher
 from collective.solr.interfaces import ISearch
 from collective.solr.interfaces import IFlare
 from collective.solr.utils import isActive, prepareData
+from collective.solr.utils import padResults
 from collective.solr.mangler import mangleQuery
 from collective.solr.mangler import extractQueryParameters
 from collective.solr.mangler import cleanupQueryParameters
@@ -81,8 +83,6 @@ def solrSearchResults(request=None, **keywords):
             raise FallBackException
     schema = search.getManager().getSchema() or {}
     params = cleanupQueryParameters(extractQueryParameters(args), schema)
-    if 'path' in args and 'navtree' in args['path']:
-        raise FallBackException
     languageFilter(args)
     mangleQuery(args)
     prepareData(args)
@@ -96,5 +96,9 @@ def solrSearchResults(request=None, **keywords):
         return adapter is not None and adapter or flare
     results = response.results()
     for idx, flare in enumerate(results):
+        flare = wrap(flare)
+        for missing in set(schema.stored).difference(flare):
+            flare[missing] = MV
         results[idx] = wrap(flare)
+    padResults(results, **params)           # pad the batch
     return response

@@ -1,8 +1,7 @@
 TODOs:
 * support for date facets
-* update docs wrt installation & requirements
 * result iterator (with __len__ on results object)
-* batch support for searching
+* support for "navtree" and "level" arguments for path queries
 
 * provide decorator for solr exceptions
 * add signal handlers (see store.py)
@@ -11,4 +10,3 @@ TODOs:
   preferably via <copyField> tags in the solr schema
 * evaluate http://www.gnuenterprise.org/~jcater/solr.py as a replacement
   (also see http://tinyurl.com/2zcogf)
-

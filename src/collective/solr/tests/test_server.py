@@ -5,6 +5,7 @@ from zope.component import getUtility
 from zope.schema.interfaces import IVocabularyFactory
 from transaction import commit, abort
 from DateTime import DateTime
+from Missing import MV
 from time import sleep
 from re import split
 
@@ -361,7 +362,7 @@ class SolrErrorHandlingTests(SolrTestCase):
         self.folder.processForm(values={'title': 'Bar'})
         commit()                    # indexing (doesn't) happen on commit
         self.assertEqual(log, ['exception while getting schema',
-            'exception while getting schema',
+            'unable to fetch schema, skipping indexing of %r', self.folder,
             'exception during request %r', '<commit/>'])
 
 
@@ -387,7 +388,7 @@ class SolrServerTests(SolrTestCase):
 
     def testGetData(self):
         manager = getUtility(ISolrConnectionManager)
-        fields = sorted([f.name for f in manager.getSchema().fields()])
+        fields = sorted([f.name for f in manager.getSchema().fields])
         fields.remove('default')        # remove any copy-fields
         proc = SolrIndexProcessor(manager)
         # without explicit attributes all data should be returned
@@ -432,6 +433,8 @@ class SolrServerTests(SolrTestCase):
         self.assertEqual(search('+portal_type:Folder'), 1)
 
     def testReindexObjectWithEmptyDate(self):
+        # this test passes on 64-bit systems, but fails on 32-bit machines
+        # for the same reasons explained in `testDateBefore1000AD`...
         log = []
         def logger(*args):
             log.extend(args)
@@ -442,6 +445,22 @@ class SolrServerTests(SolrTestCase):
         self.folder.reindexObject(idxs=['modified', 'Title'])
         commit()
         self.assertEqual(log, [])
+        self.assertEqual(self.search('+Title:Foo').results().numFound, '1')
+
+    def testDateBefore1000AD(self):
+        # AT's default "floor date" of `DateTime(1000, 1)` is converted
+        # to different time representations depending on if it's running
+        # on 32 or 64 bits (because the seconds since/before epoch are bigger
+        # than `sys.maxint` and `DateTime.safegmtime` raises an error in this
+        # case, resulting in a different timezone calculation).  while the
+        # result is off by 5 days for 64 bits, the one for 32 is even more
+        # troublesome.  that's because the resulting date is from december
+        # 999 (a.d.), and even though the year is sent with a leading zero
+        # to Solr, it's returned without one causing the `DateTime` parser
+        # to choke...  please note that this is only the case with Solr 1.4.
+        conn = getUtility(ISolrConnectionManager).getConnection()
+        conn.add(UID='foo', Title='foo', effective='0999-12-31T22:00:00Z')
+        conn.commit()
         self.assertEqual(self.search('+Title:Foo').results().numFound, '1')
 
     def testFilterInvalidCharacters(self):
@@ -542,15 +561,55 @@ class SolrServerTests(SolrTestCase):
         search = lambda path: sorted([r.physicalPath for r in
             solrSearchResults(request, path=path)])
         self.assertEqual(len(search(path='/plone')), 8)
+        self.assertEqual(len(search(path={'query': '/plone', 'depth': -1})), 8)
         self.assertEqual(search(path='/plone/news'),
             ['/plone/news', '/plone/news/aggregator'])
         self.assertEqual(search(path={'query': '/plone/news'}),
+            ['/plone/news', '/plone/news/aggregator'])
+        self.assertEqual(search(path={'query': '/plone/news', 'depth': -1}),
             ['/plone/news', '/plone/news/aggregator'])
         self.assertEqual(search(path={'query': '/plone/news', 'depth': 0}),
             ['/plone/news'])
         self.assertEqual(search(path={'query': '/plone', 'depth': 1}),
             ['/plone/Members', '/plone/events', '/plone/front-page',
              '/plone/news'])
+
+    def testMultiplePathSearches(self):
+        self.maintenance.reindex()
+        request = dict(SearchableText='"[* TO *]"')
+        search = lambda path, **kw: sorted([r.physicalPath for r in
+            solrSearchResults(request, path=dict(query=path, **kw))])
+        # multiple paths with equal length...
+        path = ['/plone/news', '/plone/events']
+        self.assertEqual(search(path),
+            ['/plone/events', '/plone/events/aggregator',
+             '/plone/events/aggregator/previous',
+             '/plone/news', '/plone/news/aggregator'])
+        self.assertEqual(search(path, depth=-1),
+            ['/plone/events', '/plone/events/aggregator',
+             '/plone/events/aggregator/previous',
+             '/plone/news', '/plone/news/aggregator'])
+        self.assertEqual(search(path, depth=0),
+            ['/plone/events', '/plone/news'])
+        self.assertEqual(search(path, depth=1),
+            ['/plone/events', '/plone/events/aggregator',
+             '/plone/news', '/plone/news/aggregator'])
+        # multiple paths with different length...
+        path = ['/plone/news', '/plone/events/aggregator']
+        self.assertEqual(search(path),
+            ['/plone/events/aggregator', '/plone/events/aggregator/previous',
+             '/plone/news', '/plone/news/aggregator'])
+        self.assertEqual(search(path, depth=-1),
+            ['/plone/events/aggregator', '/plone/events/aggregator/previous',
+             '/plone/news', '/plone/news/aggregator'])
+        self.assertEqual(search(path, depth=0),
+            ['/plone/events/aggregator', '/plone/news'])
+        self.assertEqual(search(path, depth=1),
+            ['/plone/events/aggregator', '/plone/events/aggregator/previous',
+             '/plone/news', '/plone/news/aggregator'])
+        self.assertEqual(search(['/plone/news', '/plone'], depth=1),
+            ['/plone/Members', '/plone/events',
+             '/plone/front-page', '/plone/news', '/plone/news/aggregator'])
 
     def testLogicalOperators(self):
         self.portal.news.setSubject(['News'])
@@ -651,7 +710,7 @@ class SolrServerTests(SolrTestCase):
 
     def testSortParameters(self):
         self.maintenance.reindex()
-        search = lambda attr, **kw: ', '.join([getattr(r, attr) for r in
+        search = lambda attr, **kw: ', '.join([getattr(r, attr, '?') for r in
             solrSearchResults(request=dict(SearchableText='"[* TO *]"',
                               path=dict(query='/plone', depth=1)), **kw)])
         self.assertEqual(search('Title', sort_on='Title'),
@@ -661,9 +720,9 @@ class SolrServerTests(SolrTestCase):
         self.assertEqual(search('getId', sort_on='Title',
             sort_order='descending'), 'front-page, Members, news, events')
         self.assertEqual(search('Title', sort_on='Title', sort_limit=2),
-            'Events, News')
+            'Events, News, ?, ?')
         self.assertEqual(search('Title', sort_on='Title', sort_order='reverse',
-            sort_limit='3'), 'Welcome to Plone, Users, News')
+            sort_limit='3'), 'Welcome to Plone, Users, News, ?')
         # test sort index aliases
         schema = self.search.getManager().getSchema()
         self.failIf('sortable_title' in schema)
@@ -823,6 +882,18 @@ class SolrServerTests(SolrTestCase):
             results = solrSearchResults(request)
             self.assertEqual(len(results), 1)
 
+    def testExplicitLogicalOperatorQueries(self):
+        self.folder.invokeFactory('Document', id='doc1', title='Foo')
+        self.folder.invokeFactory('Document', id='doc2', title='Bar')
+        self.folder.invokeFactory('Document', id='doc3', title='Foo Bar')
+        commit()                        # indexing happens on commit
+        request = dict(SearchableText='Bar OR Foo')
+        results = solrSearchResults(request)
+        self.assertEqual(len(results), 3)
+        request = dict(SearchableText='Bar AND Foo')
+        results = solrSearchResults(request)
+        self.assertEqual(len(results), 1)
+
     def testMultiValueSearch(self):
         self.maintenance.reindex()
         results = solrSearchResults(SearchableText='New*',
@@ -830,6 +901,54 @@ class SolrServerTests(SolrTestCase):
         self.assertEqual(len(results), 2)
         self.assertEqual(sorted([r.physicalPath for r in results]),
             ['/plone/front-page', '/plone/news'])
+
+    def testFlareHasDataForAllMetadataColumns(self):
+        # all search results should have metadata for all indices
+        self.maintenance.reindex()
+        results = solrSearchResults(SearchableText='Welcome')
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].get('Subject'), MV)
+        schema = self.search.getManager().getSchema()
+        expected = set(list(schema.stored) + ['score'])     # score gets added
+        self.assertEqual(set(results[0].keys()), expected)
+
+    def testSearchWithOnlyFilterQueryParameters(self):
+        self.maintenance.reindex()
+        # let's remove all required parameters and use a filter query
+        config = getUtility(ISolrConnectionConfig)
+        config.required = []
+        config.filter_queries = ['portal_type', 'Language']
+        results = solrSearchResults(portal_type=['Document'])
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].physicalPath, '/plone/front-page')
+
+    def testAccessSearchResultsFromPythonScript(self):
+        self.maintenance.reindex()
+        from Products.PythonScripts.PythonScript import manage_addPythonScript
+        manage_addPythonScript(self.folder, 'foo')
+        self.folder.foo.write('return [r.Title for r in '
+            'context.portal_catalog(SearchableText="News")]')
+        self.assertEqual(self.folder.foo(), ['News', 'News'])
+
+    def testSearchForTermWithColon(self):
+        self.folder.processForm(values={'title': 'foo:bar'})
+        commit()                        # indexing happens on commit
+        results = solrSearchResults(SearchableText='foo foo:bar')
+        self.assertEqual(sorted([r.Title for r in results]), ['foo:bar'])
+
+    def testBatchedSearchResults(self):
+        self.maintenance.reindex()
+        search = lambda **kw: [getattr(i, 'Title', None) for i in
+            solrSearchResults(SearchableText='a*', sort_on='Title', **kw)]
+        self.assertEqual(search(),
+            ['Events', 'News', 'Past Events', 'Welcome to Plone'])
+        # when a batch size is given, the length should remain the same,
+        # but only items in the batch actually exist...
+        self.assertEqual(search(rows=2),
+            ['Events', 'News', None, None])
+        # given a start value, the batch is moved within the search results
+        self.assertEqual(search(rows=2, start=1),
+            [None, 'News', 'Past Events', None])
 
 
 def test_suite():
