@@ -114,9 +114,10 @@ def extractQueryParameters(args):
         reverse = reverse.lower() in ('reverse', 'descending')
         order = reverse and 'desc' or 'asc'
         params['sort'] = '%s %s' % (index, order)
-    limit = get('limit')
+    limit = args.get('limit', None)
     if limit:
         params['rows'] = int(limit)
+        del args['limit']
     for key, value in args.items():
         if key in ('fq', 'fl', 'facet'):
             params[key] = value
