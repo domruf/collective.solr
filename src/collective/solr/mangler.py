@@ -68,7 +68,7 @@ def mangleQuery(keywords):
                     params = keywords['parentPaths'] = set()
                     for p in path:
                         base = len(p.split('/'))
-                        params.add(tmpl % (base, base + depth, p))
+                        params.add(tmpl % (base+1, base + depth, p))
                 del args['depth']
         elif key == 'effectiveRange':
             value = convert(value)
