@@ -32,6 +32,10 @@ class PloneFlare(AttrDict):
         """ convenience alias """
         return self['physicalPath']
 
+    def getRID(self):
+        """ Return a Resource Identifier, like a brain would do """
+        return self.UID
+
     def getObject(self, REQUEST=None):
         """ return the actual object corresponding to this flare """
         site = getSiteManager()
@@ -39,6 +43,9 @@ class PloneFlare(AttrDict):
         if not path:
             return None
         return site.unrestrictedTraverse(path)
+
+    _unrestrictedGetObject = getObject
+
 
     def getURL(self, relative=False):
         """ convert the physical path into a url, if it was stored """
