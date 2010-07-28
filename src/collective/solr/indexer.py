@@ -38,14 +38,19 @@ def datehandler(value):
             v.month(), v.day(), v.hour(), v.minute(), v.second())
     return value
 
+
 def inthandler(value):
+    # solr would choke on None and throw a javalangNumberFormatException,
+    # preventing the whole object from being indexed. Therefore raise an
+    # AttributeError in this case.
     if value is None:
-        value = 0
+        raise AttributeError
     return value
 
 handlers = {
     'solr.DateField': datehandler,
     'solr.TrieDateField': datehandler,
+    'solr.IntField': inthandler,
     'solr.TrieIntField': inthandler,
 }
 
