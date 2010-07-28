@@ -38,10 +38,15 @@ def datehandler(value):
             v.month(), v.day(), v.hour(), v.minute(), v.second())
     return value
 
+def inthandler(value):
+    if value is None:
+        value = 0
+    return value
 
 handlers = {
     'solr.DateField': datehandler,
     'solr.TrieDateField': datehandler,
+    'solr.TrieIntField': inthandler,
 }
 
 
