@@ -122,6 +122,8 @@ class BinaryAdder(DefaultAdder):
         except SolrException, e:
             logger.warn('Error %s @ %s', e, data['path_string'])
             conn.reset()
+        #needed when adding new file
+        conn.flush()
 
 def boost_values(obj, data):
     """ calculate boost values using a method or skin script;  returns
