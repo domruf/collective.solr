@@ -109,9 +109,8 @@ class BinaryAdder(DefaultAdder):
         portal_state = self.context.restrictedTraverse('@@plone_portal_state')
         field = self.context.getPrimaryField()
         blob = field.get(self.context).blob
-        postdata['stream.file'] = blob.committed()
-        postdata['stream.contentTyp'] = data.get('content_type',
-                                                 'application/octet-stream')
+        postdata['stream.file'] = blob._p_blob_committed or blob._p_blob_uncommitted
+        
         url = '%s/update/extract' % conn.solrBase
         
         try:
