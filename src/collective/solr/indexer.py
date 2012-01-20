@@ -99,7 +99,7 @@ class BinaryAdder(DefaultAdder):
     """
     """
 
-    def __call__(self, conn, **data):        
+    def __call__(self, conn, **data):
         if 'ZOPETESTCASE' in os.environ:
             return super(BinaryAdder, self).__call__(conn, **data)
         ignore = ('content_type', 'SearchableText', 'created', 'Type', 'links',
@@ -110,6 +110,10 @@ class BinaryAdder(DefaultAdder):
         field = self.context.getPrimaryField()
         blob = field.get(self.context).blob
         postdata['stream.file'] = blob._p_blob_committed or blob._p_blob_uncommitted
+        #postdata['stream.contentTyp'] = field.getContentType(self.context) or 'application/octet-stream'
+        postdata['uprefix'] = 'tika_'
+        postdata['fmap.content'] = 'SearchableText'
+        postdata['extractFormat'] = 'text'
         
         url = '%s/update/extract' % conn.solrBase
         
